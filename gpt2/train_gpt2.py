@@ -270,7 +270,7 @@ def get_most_likely_row(tokens, mask, logits):
     return pred_norm
 
 # -------------------------------------------------------------------
-# TRAINING LOOP
+# TRAIN
 # -------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -302,3 +302,221 @@ if __name__ == "__main__":
         elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             device = "mps"
         print(f"using device: {device}")
+
+    device_type = "cuda" if device.startswith("cuda") else "cpu"
+
+    # plant seed for reproducibility
+    torch.manual_seed(1337)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(1337)
+
+    enc = tiktoken.get_encoding("gpt2")
+
+    # gradient accumulation config
+    total_batch_size = 524_288 # 2**19 ~0.5M, in number of tokens
+    B = 64 # Micro-batch size (make as big as the GPU can handle)
+    T = 1024 # Sequence length
+    assert total_batch_size % (B * T * ddp_world_size) == 0, "total_batch_size must be divisible by B * T * ddp_world_size"
+    grad_accum_steps = total_batch_size // (B * T * ddp_world_size)
+    if master_process:
+        print(f"total desired batch size {total_batch_size}")
+        print(f"=> calculated gradient accumulation steps: {grad_accum_steps}")
+
+    # load batches of data
+    train_loader = DataLoader(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size, split="train")
+    val_loader = DataLoader(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size, split="val")
+
+    torch.set_float32_matmul_precision('high')
+
+    # Create a log directory for writing checkpoints and logging
+    log_dir = "log"
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "log.txt")
+
+    # Start / Resume Training
+    resume_training = True
+    if resume_training:
+        # get latest checkpoint file
+        checkpoint_files = [f for f in os.listdir(log_dir) if f.startswith("model_") and f.endswith(".pt")]
+        assert len(checkpoint_files) > 0, "no checkpoint files found"
+        checkpoint_files = sorted(checkpoint_files)
+        last_checkpoint = checkpoint_files[-1]
+        checkpoint_path = os.path.join(log_dir, last_checkpoint)
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+
+        # load model state
+        model = GPT(checkpoint['config'])
+        model.to(device)
+        model.load_state_dict(checkpoint['model'])
+
+        # load optimizer state
+        optimizer = model.configure_optimizers(weight_decay=0.1, learning_rate=6e-4, device_type=device_type)
+        optimizer.load_state_dict(checkpoint['optimizer'])
+
+        # load step (which will also load learning rate)
+        current_step = checkpoint['step'] + 1
+
+        # load training data state
+        train_loader.set(checkpoint['train_loader'])
+        if master_process:
+            print(f"resuming training from step {current_step} with a validation loss of {checkpoint['val_loss']:.4f}")
+    else:
+        # create model
+        model = GPT(GPTConfig(vocab_size=50304)) # increase vocab_size to make it have more factors of 2
+        model.to(device)
+        current_step = 0
+        optimizer = model.configure_optimizers(weight_decay=0.1, learning_rate=6e-4, device_type=device_type)
+        # clear the log file
+        with open(log_file, "w") as f:
+            pass
+
+    def unwrap_model(model):
+        # Unwrap DDP
+        if hasattr(model, 'module'):
+            model = model.module
+        # Unwrap torch.compile
+        if hasattr(model, '_orig_mod'):
+            model = model._orig_mod
+        return model
+
+    use_compile = True
+    if use_compile:
+        model = torch.compile(model)
+    if ddp:
+        model = DDP(model, device_ids=[ddp_local_rank])
+
+    # Use the unwrap model function to get the raw model
+    raw_model = unwrap_model(model)
+
+    # learning rate schedule (mess with these curr not optimal)
+    max_lr = 6e-4
+    min_lr = max_lr * 0.1
+    warmup_steps = 715
+    max_steps = 19073 # 19,703 steps is ~1 epoch, if data is 10B tokens and batch size 0.5M tokens
+    def get_lr(it):
+        # 1) linear warmup for warmup_iters steps
+        if it < warmup_steps:
+            return max_lr * (it + 1) / warmup_steps
+        # 2) if it > lr_decay_iters --> min learning rate
+        if it > max_steps:
+            return min_lr
+        # 3) in between, use cosine decay down to min learning rate
+        decay_ratio = (it - warmup_steps) / (max_steps - warmup_steps)
+        assert 0 <= decay_ratio <= 1
+        coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff starts at 1 and goes to 0
+        return min_lr + coeff * (max_lr - min_lr)
+
+# -------------------------------------------------------------------
+# TRAINING LOOP
+# -------------------------------------------------------------------
+
+    for step in range(current_step, max_steps):
+        t0 = time.time()
+        last_step = (step == max_steps - 1)
+
+        # once in a while, evaluate our val loss
+        if step % 250 == 0 or last_step:
+            model.eval()
+            val_loader.reset()
+            with torch.no_grad():
+                val_loss_accum = 0.0
+                val_loss_steps = 20
+                for _ in range(val_loss_steps):
+                    x, y = val_loader.next_batch()
+                    x, y = x.to(device), y.to(device)
+                    with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
+                        logits, loss = model(x, y)
+                    val_loss_accum += loss.detach()
+                val_loss_accum /= val_loss_steps # diff from Andrej - less prone to floating point errors: https://github.com/karpathy/build-nanogpt/pull/19/files
+            if ddp:
+                dist.all_reduce(val_loss_accum, op=dist.ReduceOp.AVG)
+            if master_process:
+                print(f"validation loss: {val_loss_accum.item():.4f}")
+                with open(log_file, "a") as f:
+                    f.write(f"{step} val {val_loss_accum.item():.4f}\n")
+                if step > 0 and (step % 2500 == 0 or last_step):
+                    # write model checkpoints
+                    train_loader_checkpoint = {'current_shard': train_loader.current_shard, 'current_position': train_loader.current_position}
+                    checkpoint_path = os.path.join(log_dir, f"model_{step:05d}.pt")
+                    checkpoint = {
+                        'model': raw_model.state_dict(),
+                        'optimizer': optimizer.state_dict(),
+                        'config': raw_model.config,
+                        'step': step,
+                        'val_loss': val_loss_accum.item(),
+                        'train_loader': train_loader_checkpoint,
+                    }
+                    torch.save(checkpoint, checkpoint_path)
+
+        # HellaSwag Eval
+        if (step % 250 == 0 or last_step):
+            num_correct_norm = 0
+            num_total = 0
+            # Use unwrapped (uncompiled) model for evaluation
+            model_for_eval = unwrap_model(model)
+            model_for_eval.eval()
+            for i, example in enumerate(iterate_examples("val")):
+                # only process examples where i % ddp_world_size == ddp_rank
+                if i % ddp_world_size != ddp_rank:
+                    continue
+                # render the example into tokens and labels
+                _, tokens, mask, label = render_example(example)
+                tokens = tokens.to(device)
+                mask = mask.to(device)
+                # get the logits
+                with torch.no_grad():
+                    with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
+                        logits, loss = model_for_eval(tokens)
+                    pred_norm = get_most_likely_row(tokens, mask, logits)
+                num_total += 1
+                num_correct_norm += int(pred_norm == label)
+            # reduce the stats across all processes
+            if ddp:
+                num_total = torch.tensor(num_total, dtype=torch.long, device=device)
+                num_correct_norm = torch.tensor(num_correct_norm, dtype=torch.long, device=device)
+                dist.all_reduce(num_total, op=dist.ReduceOp.SUM)
+                dist.all_reduce(num_correct_norm, op=dist.ReduceOp.SUM)
+                num_total = num_total.item()
+                num_correct_norm = num_correct_norm.item()
+            acc_norm = num_correct_norm / num_total
+            if master_process:
+                print(f"HellaSwag accuracy: {num_correct_norm}/{num_total}={acc_norm:.4f}")
+                with open(log_file, "a") as f:
+                    f.write(f"{step} hella {acc_norm:.4f}\n")
+
+
+        # forward pass, backward pass
+        model.train()
+        optimizer.zero_grad()
+        loss_accum = 0.0
+        for micro_step in range(grad_accum_steps):
+            x, y = train_loader.next_batch()
+            x, y = x.to(device), y.to(device)
+            if ddp:
+                model.require_backward_gradient_sync = (micro_step == grad_accum_steps - 1)
+            with torch.autocast(device_type=device, dtype=torch.bfloat16):
+                logits, loss = model(x, y)
+            loss = loss / grad_accum_steps
+            loss_accum += loss.detach()
+            loss.backward()
+        if ddp:
+            dist.all_reduce(loss_accum, op=dist.ReduceOp.AVG)
+        norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        # determine and set the learning rate for this iteration
+        lr = get_lr(step)
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
+        optimizer.step()
+        if device_type == "cuda":
+            torch.cuda.synchronize() # wait for GPU to finish work (to not taint timing)
+        t1 = time.time()
+        dt = (t1-t0) # time difference in seconds
+        tokens_processed = train_loader.B * train_loader.T * grad_accum_steps * ddp_world_size
+        tokens_per_sec = tokens_processed / dt
+        if master_process:
+            print(f"step: {step:5d} | loss: {loss_accum.item():.6} | lr: {lr:.4e} | norm: {norm:.4f} | dt: {dt*1000:.2f}ms | tok/sec: {tokens_per_sec:.2f}")
+            with open(log_file, "a") as f:
+                f.write(f"{step} train {loss_accum.item():.6f}\n")
+
+    if ddp:
+        destroy_process_group()
