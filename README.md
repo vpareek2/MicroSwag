@@ -1,7 +1,9 @@
-# MicroSwag Project Design Document
+# MicroSwag Project
 
 ## Project Overview
-MicroSwag is a research initiative focused on optimizing small language models (under 200M parameters) for performance on the HellaSwag benchmark. The project explores the architectural efficiency frontier for compact language models through a systematic comparison of modern transformer architectures, all while maintaining strict parameter and training constraints.
+MicroSwag is a research project focused on optimizing small language models (under 200M parameters) for performance on the HellaSwag benchmark. The project explores the architectural efficiency frontier for compact language models through a systematic comparison of modern transformer architectures, all while maintaining strict parameter and training constraints.
+
+**It also is a codebase used to pre-train LLMs. It is very simplistic and meant for smaller experiments, not prod.**
 
 ## Research Objectives
 - Determine which transformer architectures perform best at small parameter scales (< 200M parameters)
