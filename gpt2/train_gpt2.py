@@ -17,9 +17,8 @@ from hellaswag import render_example, iterate_examples, get_most_likely_row
 # MODEL ARCHITECTURE
 # -------------------------------------------------------------------
 
-# GPT-2 uses vanilla multi-head attention
 class CausalSelfAttention(nn.Module):
-
+    """Vanilla Multi-Head Attention"""
     def __init__(self, config):
         assert config.n_embd % config.n_head == 0
         # key, query, value projections for all heads, but in batch
@@ -42,3 +41,18 @@ class CausalSelfAttention(nn.Module):
         y = y.transpose(1, 2).contiguous().view(B, T, C) # Re-assemble all head outputs side by side
         y =  self.c_proj(y) # output projection
         return y
+
+class MLP(nn.Module):
+    """Feedforward MLP"""
+    def __init__(self, config):
+        super().__init__()
+        self.c_fc = nn.Linear(config.n_embd, config.n_embd * 4)
+        self.gelu = nn.GELU(approximate="tanh")
+        self.c_proj = nn.Linear(config.n_embd * 4, config.n_embd)
+        self.c_proj.NANOGPT_SCALE_INIT = 1
+
+    def forward(self, x):
+        x = self.c_fc(x)
+        x = self.gelu(x)
+        x = self.c_proj(x)
+        return x
