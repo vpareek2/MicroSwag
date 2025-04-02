@@ -22,6 +22,7 @@ MicroSwag is a research project focused on optimizing small language models (und
   - Gemma 3
   - Mistral
   - DeepSeek-V3 (MoE)
+  - RWKV
 - Measure and compare HellaSwag performance across architectures
 
 ## Constraints
