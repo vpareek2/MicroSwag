@@ -125,6 +125,35 @@ class Phi4TrainingConfig(BaseTrainingConfig):
     max_steps: int = 19073  # maximum number of training steps
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
+
+@dataclass
+class Gemma3Config:
+    """Gemma 3 model architecture configuration"""
+    block_size: int = 1024  # max sequence length
+    vocab_size: int = 262144  # number of tokens (Gemma 3 uses a larger vocabulary)
+    n_layer: int = 34  # number of transformer layers for 4B model
+    n_head: int = 8  # number of attention heads for 4B model
+    n_kv_head: int = 4  # number of key/value heads for grouped query attention
+    n_embd: int = 2560  # embedding dimension for 4B model
+    norm_eps: float = 1e-5  # epsilon for normalization
+    sliding_window: int = 1024  # size of sliding window
+    sliding_window_pattern: int = 6  # 5 local layers then 1 global layer
+    use_qk_norm: bool = True  # use QK normalization
+    rope_local_theta: float = 10000.0  # base for rotary positional embeddings in local layers
+    rope_global_theta: float = 1000000.0  # base for rotary positional embeddings in global layers
+    rope_scaling: float = 8.0  # scaling factor for RoPE when using extended context
+
+@dataclass
+class Gemma3TrainingConfig(BaseTrainingConfig):
+    """Gemma 3 specific training configuration"""
+    # Similar to other models
+    weight_decay: float = 0.1
+    learning_rate: float = 6e-4
+    min_lr_ratio: float = 0.1
+    warmup_steps: int = 715
+    max_steps: int = 19073
+    betas: Tuple[float, float] = (0.9, 0.95)
+    eps: float = 1e-8
 # -------------------------------------------------------------------
 # CONFIGS
 # -------------------------------------------------------------------

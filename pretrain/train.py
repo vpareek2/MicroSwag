@@ -13,6 +13,7 @@ from utils import evaluation
 import models.gpt2
 import models.llama3
 import models.phi4
+import models.gemma3
 
 def parse_args():
     """Parse command line arguments"""
@@ -153,6 +154,8 @@ def train():
                 model = models.llama3.LLaMA(checkpoint['config'])
             elif args.model == "phi4":
                 model = models.phi4.Phi4(checkpoint['config'])
+            elif args.model == "gemma3":
+                model = models.gemma3.Gemma3(checkpoint['config'])
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
             # Move model to device
@@ -195,6 +198,8 @@ def train():
                 model = models.llama3.create_llama_from_config(config)
             elif args.model == "phi4":
                 model = models.phi4.create_phi4_from_config(config)
+            elif args.model == "gemma3":
+                model = models.gemma3.create_gemma3_from_config(config)
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
 
@@ -231,6 +236,8 @@ def train():
             model = models.llama3.create_llama_from_config(config)
         elif args.model == "phi4":
             model = models.phi4.create_phi4_from_config(config)
+        elif args.model == "gemma3":
+            model = models.gemma3.create_gemma3_from_config(config)
         else:
             raise ValueError(f"Unsupported model type: {args.model}")
 
