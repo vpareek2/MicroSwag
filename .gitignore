@@ -6,4 +6,3 @@ private_key.pem
 **/__pycache__
 **/edu_fineweb10B
 **/log
-pretrain/utils/hellaswag/hellaswag_val.jsonl
