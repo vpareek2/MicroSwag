@@ -1,6 +1,8 @@
 .venv
-pretrain/utils/edu_fineweb10B
 **/.DS_Store
 setup.sh
 private_key.pem
 **/__init__.py
+**/__pycache__
+**/edu_fineweb10B
+**/log

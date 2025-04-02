@@ -184,7 +184,7 @@ def train():
 
             # Create a new model
             if args.model == "gpt2":
-                model = models.gpt2.create_gpt_from_config(config)
+                model = models.gpt2.GPT(config.model_specific)
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
 
@@ -338,7 +338,7 @@ def train():
         tokens_processed = B * T * grad_accum_steps * ddp_world_size
         tokens_per_sec = tokens_processed / dt
 
-        if master_process:
+        if master_process: # <--- IMPORTANT: Only prints on rank 0
             print(f"step: {step:5d} | loss: {loss_accum.item():.6f} | lr: {lr:.4e} | norm: {norm:.4f} | dt: {dt*1000:.2f}ms | tok/sec: {tokens_per_sec:.2f}")
             with open(log_file, "a") as f:
                 f.write(f"{step} train {loss_accum.item():.6f}\n")
