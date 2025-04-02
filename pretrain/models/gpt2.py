@@ -142,7 +142,7 @@ class GPT(nn.Module):
         optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, betas=(0.9, 0.95), eps=1e-8, fused=use_fused)
         return optimizer
 
-    def create_gpt_from_config(self, config):
-        """Helper function to create a GPT model from a config object"""
-        model_config = config.model_specific
-        return GPT(model_config)
+def create_gpt_from_config(config):
+    """Helper function to create a GPT model from a config object"""
+    model_config = config.model_specific
+    return GPT(model_config)

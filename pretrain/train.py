@@ -9,8 +9,10 @@ from utils.dataloader import DataLoader
 from utils import distributed
 from utils import optimization
 from utils import evaluation
+
 import models.gpt2
 import models.llama3
+import models.phi4
 
 def parse_args():
     """Parse command line arguments"""
@@ -149,6 +151,8 @@ def train():
                 model = models.gpt2.GPT(checkpoint['config'])
             elif args.model == "llama":
                 model = models.llama3.LLaMA(checkpoint['config'])
+            elif args.model == "phi4":
+                model = models.phi4.Phi4(checkpoint['config'])
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
             # Move model to device
@@ -186,9 +190,11 @@ def train():
 
             # Create a new model
             if args.model == "gpt2":
-                model = models.gpt2.GPT(config.model_specific)
+                model = models.gpt2.create_gpt_from_config(config)
             elif args.model == "llama":
-                model = models.llama3.LLaMA(config.model_specific)
+                model = models.llama3.create_llama_from_config(config)
+            elif args.model == "phi4":
+                model = models.phi4.create_phi4_from_config(config)
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
 
@@ -223,6 +229,8 @@ def train():
             model = models.gpt2.create_gpt_from_config(config)
         elif args.model == "llama":
             model = models.llama3.create_llama_from_config(config)
+        elif args.model == "phi4":
+            model = models.phi4.create_phi4_from_config(config)
         else:
             raise ValueError(f"Unsupported model type: {args.model}")
 
