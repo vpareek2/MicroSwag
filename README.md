@@ -19,6 +19,7 @@ MicroSwag is a project focused on optimizing small language models (124M base mo
   - Mistral
   - DeepSeek-V3 (MoE)
   - RWKV
+  - TAKE A LOOK AT MULTI-TOKEN ATTENTION
 - Measure and compare HellaSwag performance across architectures
 
 ## Constraints
