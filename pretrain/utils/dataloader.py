@@ -111,9 +111,9 @@ class DataLoader:
         self.dataloader = PyTorchDataLoader(
             self.dataset,
             batch_size=None,  # We're already creating batches in the dataset
-            num_workers=2,    # Use multiple workers for loading
+            num_workers=6,    # Use multiple workers for loading
             pin_memory=True,  # Speeds up host to GPU transfers
-            prefetch_factor=2 # How many samples to prefetch per worker
+            prefetch_factor=3 # How many samples to prefetch per worker
         )
         
         # Create iterator
