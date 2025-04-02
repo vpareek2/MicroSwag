@@ -22,6 +22,8 @@ MicroSwag is a project focused on optimizing small language models (124M base mo
   - TAKE A LOOK AT MULTI-TOKEN ATTENTION
 - Measure and compare HellaSwag performance across architectures
 
+**GO BACK AND LOOK AT HYPERPARAMS BEFORE TRAIN ENSURE PAPER COMPATIBILITY**
+
 ## Constraints
 - Parameter budget: <= 124M parameter base model (may move higher post-training)
 - Training data: FineWeb 10B dataset only (single epoch)
