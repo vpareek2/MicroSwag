@@ -2,3 +2,4 @@
 pretrain/utils/edu_fineweb10B
 *.DS_Store
 setup.sh
+private_key.pem
