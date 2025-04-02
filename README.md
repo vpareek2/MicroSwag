@@ -1,7 +1,7 @@
 # MicroSwag Project
 
 ## Project Overview
-MicroSwag is a project focused on optimizing small language models (under 200M parameters) for performance on the HellaSwag benchmark. The project explores the architectural efficiency frontier for compact language models through a systematic comparison of modern transformer architectures, all while maintaining strict parameter and training constraints.
+MicroSwag is a project focused on optimizing small language models (124M base models) for performance on the HellaSwag benchmark. The project explores the architectural efficiency frontier for compact language models through a systematic comparison of modern transformer architectures, all while maintaining strict parameter and training constraints.
 
 **It also is a codebase used to pre-train LLMs. It is very simplistic and meant for smaller experiments. It squeezes out a lot of performance that you can get through vanilla pytorch. Being designed for small models, a lot of big model optimizations are missing.**
 
