@@ -1,7 +1,6 @@
 numpy
 torch
 tiktoken
-hellaswag
 datasets
 tqdm
 transformers
