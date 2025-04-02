@@ -12,7 +12,7 @@ cd MicroSwag
 
 # Optional: switch remote to allow push access
 
-git remote set-url origin https://<vpareek2>:<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>@github.com/vpareek2/MicroSwag.git
+git remote set-url origin https://<vpareek2>:<>@github.com/vpareek2/MicroSwag.git
 
 # Configure git for proper line endings
 git config --global core.autocrlf false

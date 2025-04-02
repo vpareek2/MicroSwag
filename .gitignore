@@ -1,3 +1,4 @@
 .venv
 pretrain/utils/edu_fineweb10B
 *.DS_Store
+setup.sh
