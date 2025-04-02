@@ -1,3 +1,5 @@
+"""OpenAI GPT-2 as per https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf"""
+
 import math
 import torch
 import torch.nn as nn

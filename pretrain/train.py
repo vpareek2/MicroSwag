@@ -10,6 +10,7 @@ from utils import distributed
 from utils import optimization
 from utils import evaluation
 import models.gpt2
+import models.llama3
 
 def parse_args():
     """Parse command line arguments"""
@@ -146,9 +147,10 @@ def train():
             # Get model-specific config from the architecture-specific module
             if args.model == "gpt2":
                 model = models.gpt2.GPT(checkpoint['config'])
+            elif args.model == "llama":
+                model = models.llama3.LLaMA(checkpoint['config'])
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
-
             # Move model to device
             model, raw_model = distributed.wrap_model_for_distributed(
                 model,
@@ -185,6 +187,8 @@ def train():
             # Create a new model
             if args.model == "gpt2":
                 model = models.gpt2.GPT(config.model_specific)
+            elif args.model == "llama":
+                model = models.llama3.LLaMA(config.model_specific)
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
 
@@ -217,6 +221,8 @@ def train():
         # Create a new model
         if args.model == "gpt2":
             model = models.gpt2.create_gpt_from_config(config)
+        elif args.model == "llama":
+            model = models.llama3.create_llama_from_config(config)
         else:
             raise ValueError(f"Unsupported model type: {args.model}")
 
