@@ -11,6 +11,8 @@ class ModelConfig:
     model_type: str = "gpt2"  # Identifier for the model type
 
     # In ModelConfig class, update the get_model_specific_config method
+    # Update the ModelConfig class to include DeepSeekMoE
+
     def get_model_specific_config(self):
         """Return the model-specific configuration based on model_type"""
         if self.model_type == "gpt2":
@@ -23,10 +25,11 @@ class ModelConfig:
             return MistralConfig()
         elif self.model_type == "gemma3":
             return Gemma3Config()
+        elif self.model_type == "deepseek":
+            return DeepSeekMoEConfig()
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
-    # In ModelConfig class, update the get_model_training_config method
     def get_model_training_config(self):
         """Return the model-specific training configuration"""
         if self.model_type == "gpt2":
@@ -39,6 +42,8 @@ class ModelConfig:
             return MistralTrainingConfig()
         elif self.model_type == "gemma3":
             return Gemma3TrainingConfig()
+        elif self.model_type == "deepseek":
+            return DeepSeekMoETrainingConfig()
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
@@ -190,6 +195,49 @@ class MistralTrainingConfig(BaseTrainingConfig):
     max_steps: int = 19073  # maximum number of training steps
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
+
+@dataclass
+class DeepSeekMoEConfig:
+    """DeepSeekMoE model architecture configuration"""
+    # Basic transformer parameters (aligned with other models)
+    block_size: int = 1024  # max sequence length
+    vocab_size: int = 50304  # number of tokens (same as GPT-2 for compatibility with tokenizer)
+    n_layer: int = 12  # number of transformer layers
+    n_head: int = 12  # number of attention heads
+    n_embd: int = 768  # embedding dimension
+
+    # MoE-specific parameters
+    n_experts: int = 8  # total number of routed experts
+    n_active_experts: int = 2  # number of experts activated per token
+    n_shared_experts: int = 2  # number of shared experts that are always activated
+    expert_dim: int = 768  # dimension of expert input/output
+    expert_ffn_dim: int = 1536  # dimension inside each expert feed-forward network
+
+    # Attention and normalization parameters
+    n_kv_head: int = 4  # number of key/value heads for grouped query attention
+    norm_eps: float = 1e-5  # epsilon for normalization
+    rope_theta: float = 10000.0  # base for rotary positional embeddings
+    use_scaled_rope: bool = False  # whether to use scaled rotary positional embeddings
+
+    # Round to multiples for better hardware utilization
+    multiple_of: int = 256  # multiple of for hidden dimension rounding
+
+@dataclass
+class DeepSeekMoETrainingConfig(BaseTrainingConfig):
+    """DeepSeekMoE specific training configuration"""
+    # Similar parameters to other models for fair comparison
+    weight_decay: float = 0.1  # weight decay for optimizer
+    learning_rate: float = 6e-4  # base learning rate
+    min_lr_ratio: float = 0.1  # minimum learning rate as ratio of max lr
+    warmup_steps: int = 715  # number of warmup steps
+    max_steps: int = 19073  # maximum number of training steps
+    betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
+    eps: float = 1e-8  # epsilon parameter for AdamW
+
+    # MoE-specific training parameters
+    routing_balance_coef: float = 0.01  # coefficient for expert balancing loss
+    z_loss_coef: float = 0.001  # coefficient for z-loss to stabilize gating
+    expert_dropout: float = 0.1  # dropout rate applied to experts
 # -------------------------------------------------------------------
 # CONFIGS
 # -------------------------------------------------------------------
