@@ -205,20 +205,19 @@ class DeepSeekMoEConfig:
     n_layer: int = 12  # number of transformer layers
     n_head: int = 12  # number of attention heads
     n_embd: int = 768  # embedding dimension
-
+    # MLA-specific parameters
+    latent_dim: int = 512  # dimension for KV latent compression
+    max_batch_size: int = 32  # maximum batch size for caching
     # MoE-specific parameters
     n_experts: int = 8  # total number of routed experts
     n_active_experts: int = 2  # number of experts activated per token
     n_shared_experts: int = 2  # number of shared experts that are always activated
     expert_dim: int = 768  # dimension of expert input/output
     expert_ffn_dim: int = 1536  # dimension inside each expert feed-forward network
-
     # Attention and normalization parameters
-    n_kv_head: int = 4  # number of key/value heads for grouped query attention
     norm_eps: float = 1e-5  # epsilon for normalization
     rope_theta: float = 10000.0  # base for rotary positional embeddings
     use_scaled_rope: bool = False  # whether to use scaled rotary positional embeddings
-
     # Round to multiples for better hardware utilization
     multiple_of: int = 256  # multiple of for hidden dimension rounding
 
