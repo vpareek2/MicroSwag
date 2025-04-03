@@ -10,6 +10,7 @@ class ModelConfig:
     """Base configuration class for model architectures"""
     model_type: str = "gpt2"  # Identifier for the model type
 
+    # In ModelConfig class, update the get_model_specific_config method
     def get_model_specific_config(self):
         """Return the model-specific configuration based on model_type"""
         if self.model_type == "gpt2":
@@ -18,9 +19,14 @@ class ModelConfig:
             return LLaMAConfig()
         elif self.model_type == "phi4":
             return Phi4Config()
+        elif self.model_type == "mistral":
+            return MistralConfig()
+        elif self.model_type == "gemma3":
+            return Gemma3Config()
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
+    # In ModelConfig class, update the get_model_training_config method
     def get_model_training_config(self):
         """Return the model-specific training configuration"""
         if self.model_type == "gpt2":
@@ -29,6 +35,10 @@ class ModelConfig:
             return LLaMATrainingConfig()
         elif self.model_type == "phi4":
             return Phi4TrainingConfig()
+        elif self.model_type == "mistral":
+            return MistralTrainingConfig()
+        elif self.model_type == "gemma3":
+            return Gemma3TrainingConfig()
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
@@ -154,6 +164,32 @@ class Gemma3TrainingConfig(BaseTrainingConfig):
     max_steps: int = 19073
     betas: Tuple[float, float] = (0.9, 0.95)
     eps: float = 1e-8
+
+@dataclass
+class MistralConfig:
+    """Mistral model architecture configuration"""
+    block_size: int = 1024  # max sequence length
+    vocab_size: int = 50304  # number of tokens (same as GPT-2 for compatibility with tokenizer)
+    n_layer: int = 12  # number of transformer layers
+    n_head: int = 12  # number of attention heads
+    n_kv_head: int = 4  # number of key/value heads for grouped query attention
+    n_embd: int = 768  # embedding dimension
+    norm_eps: float = 1e-5  # epsilon for normalization
+    sliding_window: int = 4096  # size of sliding window attention
+    rope_theta: float = 10000.0  # base for rotary positional embeddings
+    multiple_of: int = 256  # multiple of for hidden dimension rounding
+
+@dataclass
+class MistralTrainingConfig(BaseTrainingConfig):
+    """Mistral specific training configuration"""
+    # Using similar training parameters as the other models for fair comparison
+    weight_decay: float = 0.1  # weight decay for optimizer
+    learning_rate: float = 6e-4  # base learning rate
+    min_lr_ratio: float = 0.1  # minimum learning rate as ratio of max lr
+    warmup_steps: int = 715  # number of warmup steps
+    max_steps: int = 19073  # maximum number of training steps
+    betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
+    eps: float = 1e-8  # epsilon parameter for AdamW
 # -------------------------------------------------------------------
 # CONFIGS
 # -------------------------------------------------------------------

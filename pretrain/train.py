@@ -14,11 +14,13 @@ import models.gpt2
 import models.llama3
 import models.phi4
 import models.gemma3
+import models.mistral
 
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Train language models on HellaSwag benchmark')
-    parser.add_argument('--model', type=str, default='gpt2', help='Model architecture to train')
+    parser.add_argument('--model', type=str, default='gpt2',
+                        help='Model architecture to train (gpt2, llama, phi4, mistral, gemma3)')
     return parser.parse_args()
 
 def save_checkpoint(config, model, optimizer, step, val_loss, train_loader, log_dir):
@@ -156,6 +158,8 @@ def train():
                 model = models.phi4.Phi4(checkpoint['config'])
             elif args.model == "gemma3":
                 model = models.gemma3.Gemma3(checkpoint['config'])
+            elif args.model == "mistral":
+                model = models.mistral.Mistral(checkpoint['config'])
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
             # Move model to device
@@ -200,6 +204,8 @@ def train():
                 model = models.phi4.create_phi4_from_config(config)
             elif args.model == "gemma3":
                 model = models.gemma3.create_gemma3_from_config(config)
+            elif args.model == "mistral":
+                model = models.mistral.create_mistral_from_config(config)
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
 
@@ -238,6 +244,8 @@ def train():
             model = models.phi4.create_phi4_from_config(config)
         elif args.model == "gemma3":
             model = models.gemma3.create_gemma3_from_config(config)
+        elif args.model == "mistral":
+            model = models.mistral.create_mistral_from_config(config)
         else:
             raise ValueError(f"Unsupported model type: {args.model}")
 
