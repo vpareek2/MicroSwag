@@ -33,6 +33,7 @@ class RMSNorm(nn.Module):
         output = self._norm(x.float()).type_as(x)
         return output * self.weight
 
+# --- SlidingWindowAttention Class ---
 class SlidingWindowAttention(nn.Module):
     """Grouped-Query Attention with Sliding Window"""
     def __init__(self, config):
@@ -43,55 +44,88 @@ class SlidingWindowAttention(nn.Module):
         self.n_head = config.n_head
         self.n_kv_head = config.n_kv_head
         self.n_rep = self.n_head // self.n_kv_head
-        self.hd = config.n_embd // config.n_head
+        self.head_dim = config.n_embd // self.n_head # Renamed self.hd to self.head_dim
 
         # Sliding window size
         self.window_size = getattr(config, 'sliding_window', 4096)
 
         # Key, query, value projections
-        self.c_attn = nn.Linear(config.n_embd, (config.n_head + 2 * config.n_kv_head) * self.hd, bias=False)
+        self.c_attn = nn.Linear(config.n_embd, (self.n_head + 2 * self.n_kv_head) * self.head_dim, bias=False)
         # Output projection
         self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=False)
 
         # For checkpointing compatibility
         self.c_proj.NANOGPT_SCALE_INIT = 1
 
-    def forward(self, x, freqs_cis=None, start_pos=None, mask=None):
+    def forward(self, x: torch.Tensor, freqs_cis: Optional[torch.Tensor] = None, start_pos: Optional[int] = None, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+        # x: (B, T, C) input features
+        # freqs_cis: (T, HeadDim/2) precomputed RoPE frequencies
+        # mask: (T, T) boolean mask, True means mask out. Expected upper triangular for causal.
+        # start_pos: Not used in this implementation, kept for signature compatibility if needed elsewhere.
         B, T, C = x.size() # batch size, sequence length, embedding dim
 
-        # Calculate query, key, values for all heads
+        # Calculate Q, K, V projections
         qkv = self.c_attn(x)
-        q, k, v = qkv.split([self.n_head * self.hd, self.n_kv_head * self.hd, self.n_kv_head * self.hd], dim=-1)
-        q, k, v = map(lambda t: t.view(B, T, -1, self.hd), (q, k, v))  # (B, T, NH/NKH, HD)
+        # Split Q, K, V
+        q_size = self.n_head * self.head_dim
+        kv_size = self.n_kv_head * self.head_dim
+        q, k, v = qkv.split([q_size, kv_size, kv_size], dim=-1)
 
-        # Apply rotary positional embeddings (RoPE)
+        # Reshape for heads: (B, T, NH, HD) and (B, T, NKV, HD)
+        q = q.view(B, T, self.n_head, self.head_dim)
+        k = k.view(B, T, self.n_kv_head, self.head_dim)
+        v = v.view(B, T, self.n_kv_head, self.head_dim)
+
+        # Apply RoPE embeddings to Q and K
+        # Requires freqs_cis computed for the correct device and sequence length T
         if freqs_cis is not None:
-            q, k = rope.apply_rotary_emb(q, k, freqs_cis=freqs_cis)
+            # Ensure freqs_cis match sequence length T (slice if precomputed longer)
+            freqs_cis_t = freqs_cis[:T]
+            q, k = rope.apply_rotary_emb(q, k, freqs_cis=freqs_cis_t)
 
         # Apply Grouped Query Attention (GQA)
+        # Repeat K and V heads N times to match the number of Q heads
+        # k, v: (B, T, NKV, HD) -> (B, T, NH, HD)
         k = repeat_kv(k, self.n_rep)
         v = repeat_kv(v, self.n_rep)
 
-        # Reshape for attention calculation
-        q, k, v = map(lambda t: t.transpose(1, 2), (q, k, v))  # (B, NH, T, HD)
+        # Reshape for attention calculation: (B, NH, T, HD)
+        q = q.transpose(1, 2)
+        k = k.transpose(1, 2)
+        v = v.transpose(1, 2)
 
-        # Create sliding window mask
-        sliding_window_mask = None
-        if mask is not None:
-            # Start with existing causal mask (typically all True above diagonal)
-            sliding_window_mask = mask.clone()
+        # Prepare Attention Mask (Float Mask)
+        float_attn_mask = None
+        if mask is not None: # mask is the input causal mask (T, T), True means mask out
+            # Start with existing causal mask
+            effective_mask_bool = mask.clone() # (T, T)
 
-            # Apply sliding window: allow attention within window_size
+            # Apply sliding window constraint: allow attention within window_size
+            # Set False (don't mask) for tokens within the window [i - window_size + 1, i]
             for i in range(T):
                 start_idx = max(0, i - self.window_size + 1)
-                sliding_window_mask[i, start_idx:i+1] = False
+                effective_mask_bool[i, start_idx : i+1] = False
 
-        # Flash Attention for efficiency with sliding window
-        y = F.scaled_dot_product_attention(q, k, v, attn_mask=sliding_window_mask, is_causal=True)
+            # Convert boolean mask (True=Mask) to float mask (0.0=Keep, -inf=Mask)
+            # Add batch/head dims for broadcasting: (1, 1, T, T)
+            float_attn_mask = torch.zeros((1, 1, T, T), dtype=q.dtype, device=q.device)
+            float_attn_mask.masked_fill_(effective_mask_bool, -torch.inf)
+            # Broadcasting will handle matching Batch and Head dimensions
 
-        # Reshape and apply output projection
+        # Perform Scaled Dot-Product Attention using fused kernel
+        # Pass the explicit float mask and set is_causal=False
+        y = F.scaled_dot_product_attention(
+            q, k, v,
+            attn_mask=float_attn_mask, # Use the combined causal + sliding window float mask
+            dropout_p=0.0,             # Typically no dropout during inference/pretraining
+            is_causal=False            # Causality is handled by the explicit mask
+        )
+
+        # Reshape and project output
+        # y: (B, NH, T, HD) -> (B, T, NH, HD) -> (B, T, C)
         y = y.transpose(1, 2).contiguous().view(B, T, C)
         y = self.c_proj(y)
+
         return y
 
 class MLP(nn.Module):
