@@ -401,17 +401,7 @@ class DeepSeekMoE(nn.Module):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """
-        Forward pass for the MoE layer using vectorized operations for efficiency.
-
-        Args:
-            x: Input tensor of shape [batch_size, seq_len, hidden_dim]
-
-        Returns:
-            Tuple of:
-            - Output tensor of shape [batch_size, seq_len, hidden_dim]
-            - Optional auxiliary loss (if training)
-        """
+        """Forward pass for the MoE layer using vectorized operations for efficiency."""
         batch_size, seq_len, hidden_dim = x.shape
 
         # Get expert weights and indices from router
