@@ -1,4 +1,6 @@
 """Microsoft Research Phi 4 as per https://arxiv.org/pdf/2412.08905"""
+# Probably not going to pre-train with this model, it is too similar to llama3/gemma3. It is halfway in between the two,
+# and MSFT Research said most of their success came from training recipe.
 
 import math
 import torch
