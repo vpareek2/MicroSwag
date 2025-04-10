@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple, Optional, List, Any
-# from config import DeepSeekMoEConfig
-import inspect # For optimizer configuration
-import math # For weight init if needed
+from config import DeepSeekMoEConfig
+import inspect
+import math
 
 class RMSNorm(nn.Module):
     """RMSNorm normalization layer"""
