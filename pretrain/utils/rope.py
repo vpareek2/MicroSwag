@@ -1,6 +1,6 @@
 import math
 import torch
-from typing import Tuple
+from typing import Tuple, Optional
 
 def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
     ndim = x.ndim
@@ -35,15 +35,26 @@ def apply_scaling(freqs: torch.Tensor):
 
 def apply_rotary_emb(
     xq: torch.Tensor,
-    xk: torch.Tensor,
+    xk: Optional[torch.Tensor],
     freqs_cis: torch.Tensor,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    # Process Query Tensor (xq)
     xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
-    xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
-    freqs_cis = reshape_for_broadcast(freqs_cis, xq_)
-    xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
-    xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
-    return xq_out.type_as(xq), xk_out.type_as(xk)
+    freqs_cis_q = reshape_for_broadcast(freqs_cis, xq_) # Reshape freqs for query
+    xq_out = torch.view_as_real(xq_ * freqs_cis_q).flatten(3)
+    xq_out = xq_out.type_as(xq) # Cast back to original type
+
+    # Process Key Tensor (xk) ONLY if it's not None (Multi-Head Latent Attention)
+    xk_out = None
+    if xk is not None:
+        xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
+        # Note: freqs_cis might need slicing if xk has different seq len than xq
+        # The calling function (Attention.forward) already handles slicing freqs_cis
+        freqs_cis_k = reshape_for_broadcast(freqs_cis, xk_) # Reshape freqs for key
+        xk_out = torch.view_as_real(xk_ * freqs_cis_k).flatten(3)
+        xk_out = xk_out.type_as(xk) # Cast back to original type
+
+    return xq_out, xk_out
 
 def precompute_freqs_cis(
     dim: int, end: int, theta: float = 10000.0, use_scaled: bool = False

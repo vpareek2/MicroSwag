@@ -196,30 +196,85 @@ class MistralTrainingConfig(BaseTrainingConfig):
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
 
+
 @dataclass
 class DeepSeekMoEConfig:
     """DeepSeekMoE model architecture configuration"""
-    # Basic transformer parameters (aligned with other models)
-    block_size: int = 1024  # max sequence length
-    vocab_size: int = 50304  # number of tokens (same as GPT-2 for compatibility with tokenizer)
-    n_layer: int = 12  # number of transformer layers
-    n_head: int = 12  # number of attention heads
-    n_embd: int = 768  # embedding dimension
-    # MLA-specific parameters
-    latent_dim: int = 512  # dimension for KV latent compression
-    max_batch_size: int = 32  # maximum batch size for caching
-    # MoE-specific parameters
-    n_experts: int = 8  # total number of routed experts
-    n_active_experts: int = 2  # number of experts activated per token
-    n_shared_experts: int = 2  # number of shared experts that are always activated
-    expert_dim: int = 768  # dimension of expert input/output
-    expert_ffn_dim: int = 1536  # dimension inside each expert feed-forward network
-    # Attention and normalization parameters
-    norm_eps: float = 1e-5  # epsilon for normalization
-    rope_theta: float = 10000.0  # base for rotary positional embeddings
-    use_scaled_rope: bool = False  # whether to use scaled rotary positional embeddings
-    # Round to multiples for better hardware utilization
-    multiple_of: int = 256  # multiple of for hidden dimension rounding
+    # --- Core Transformer Args (using names consistent with your other configs) ---
+    block_size: int = 4096                   # Renamed from max_position_embeddings
+    vocab_size: int = 102400                 # Example value, adjust
+    n_layer: int = 30                        # Renamed from num_hidden_layers
+    n_head: int = 32                         # Renamed from num_attention_heads
+    n_embd: int = 4096                       # Renamed from hidden_size
+
+    # --- Attention (MLA) Specific Args ---
+    n_kv_head: Optional[int] = None          # Set to n_head if None in post_init (for MHA/GQA)
+    q_lora_rank: int = 1536
+    kv_lora_rank: int = 512
+    qk_rope_head_dim: int = 64
+    qk_nope_head_dim: int = 128
+    v_head_dim: int = 128
+    attention_bias: bool = False             # Bias in attention projections
+    attention_dropout: float = 0.0
+
+    # --- MoE Specific Args ---
+    moe_intermediate_size: int = 1024       # FFN dim inside each expert
+    n_routed_experts: int = 60              # Total number of experts
+    num_experts_per_tok: int = 2            # Active experts per token
+    n_shared_experts: int = 2               # Number of shared experts
+
+    # --- Router Specific Args ---
+    routed_scaling_factor: float = 1.0
+    n_group: int = 4
+    topk_group: int = 1
+    norm_topk_prob: bool = False            # Normalize top-k expert weights?
+
+    # --- Aux Loss Coefficients --- ADD THIS SECTION ---
+    z_loss_coef: float = 0.001              # <-- ADD THIS LINE
+    routing_balance_coef: float = 0.01      # <-- ADD THIS LINE
+
+    # --- Normalization & RoPE Args ---
+    norm_eps: float = 1e-6                  # Renamed from rms_norm_eps
+    rope_theta: float = 1000000.0           # Base for RoPE
+    # rope_scaling: Optional[Dict[str, Any]] = None # Optional: Add later if needed
+    # rope_interleave: bool = False         # Optional: Add later if needed
+
+    # --- Other Architectural Args ---
+    hidden_act: str = "silu"                # Activation function
+    initializer_range: float = 0.02         # Weight initialization std dev
+    tie_word_embeddings: bool = False       # Tie input/output embeddings?
+
+    # --- Derived Attributes (calculated after initialization) ---
+    qk_head_dim: int = field(init=False)    # Full QK dim: rope + nope
+    num_key_value_heads: int = field(init=False) # Actual number of K/V heads used
+    num_key_value_groups: int = field(init=False) # Ratio for GQA repeats
+    intermediate_size: Optional[int] = None # ADDED: For dense MLP layers
+    first_k_dense_replace: int = 0         # ADDED: Control MoE vs Dense layers
+
+    def __post_init__(self):
+        """Calculate derived parameters."""
+        # Calculate full QK head dimension
+        self.qk_head_dim = self.qk_rope_head_dim + self.qk_nope_head_dim
+
+        # Set num_key_value_heads if not provided (defaults to MHA)
+        if self.n_kv_head is None:
+            self.num_key_value_heads = self.n_head
+        else:
+             self.num_key_value_heads = self.n_kv_head
+
+        if self.intermediate_size is None:
+            # Common heuristic, adjust multiplier if needed
+            ffn_dim_multiplier = 4 # Example
+            self.intermediate_size = int(ffn_dim_multiplier * self.n_embd)
+
+        # Validate head dimensions and calculate groups for GQA
+        if self.n_head % self.num_key_value_heads != 0:
+            raise ValueError(
+                f"`n_head` ({self.n_head}) must be divisible by "
+                f"`num_key_value_heads` ({self.num_key_value_heads})"
+            )
+        self.num_key_value_groups = self.n_head // self.num_key_value_heads
+
 
 @dataclass
 class DeepSeekMoETrainingConfig(BaseTrainingConfig):
