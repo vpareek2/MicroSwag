@@ -27,6 +27,8 @@ class ModelConfig:
             return Gemma3Config()
         elif self.model_type == "deepseek":
             return DeepSeekMoEConfig()
+        elif self.model_type == "rwkv":
+            return RWKVConfig()
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
@@ -44,6 +46,8 @@ class ModelConfig:
             return Gemma3TrainingConfig()
         elif self.model_type == "deepseek":
             return DeepSeekMoETrainingConfig()
+        elif self.model_type == "rwkv":
+            return RWKVTrainingConfig()
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
@@ -292,6 +296,28 @@ class DeepSeekMoETrainingConfig(BaseTrainingConfig):
     routing_balance_coef: float = 0.01  # coefficient for expert balancing loss
     z_loss_coef: float = 0.001  # coefficient for z-loss to stabilize gating
     expert_dropout: float = 0.1  # dropout rate applied to experts
+
+@dataclass
+class RWKVConfig:
+    """RWKV model architecture configuration"""
+    block_size: int = 1024  # max sequence length
+    vocab_size: int = 50304  # number of tokens
+    n_layer: int = 12       # number of layers
+    n_embd: int = 768       # embedding dimension
+    n_head: int = 12        # number of attention heads
+    dim_ffn: int = 2048     # dimension of feed-forward network
+    norm_eps: float = 1e-5  # epsilon for normalization
+
+@dataclass
+class RWKVTrainingConfig(BaseTrainingConfig):
+    """RWKV specific training configuration"""
+    weight_decay: float = 0.1        # weight decay for optimizer
+    learning_rate: float = 6e-4      # base learning rate
+    min_lr_ratio: float = 0.1        # minimum learning rate as ratio of max lr
+    warmup_steps: int = 715          # number of warmup steps
+    max_steps: int = 19073           # maximum number of training steps
+    betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
+    eps: float = 1e-8                # epsilon parameter for AdamW
 # -------------------------------------------------------------------
 # CONFIGS
 # -------------------------------------------------------------------
