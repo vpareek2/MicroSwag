@@ -705,7 +705,7 @@ class DeepSeekMoE(nn.Module):
     """
     DeepSeek V3 MoE Language Model implementation from scratch.
     """
-    def __init__(self, config: DeepSeekMoEConfig):
+    def __init__(self, config):
         super().__init__()
         self.config = config
 

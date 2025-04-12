@@ -16,6 +16,7 @@ import models.gemma3
 import models.llama3
 import models.phi4
 import models.mistral
+import models.deepseekv3
 import models.rwkv.model as rwkv
 
 def parse_args():
@@ -191,6 +192,8 @@ def train():
                 model = models.mistral.Mistral(checkpoint['config'])
             elif args.model == "rwkv":
                 model = rwkv.create_rwkv_from_config(checkpoint['config'])
+            elif args.model == "deepseek":
+                model = models.deepseekv3.DeepSeekMoE(checkpoint['config'])
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
             # Move model to device
@@ -249,6 +252,8 @@ def train():
                 model = models.mistral.create_mistral_from_config(config)
             elif args.model == "rwkv":
                 model = rwkv.create_rwkv_from_config(config)
+            elif args.model == "deepseek":
+                model = models.deepseekv3.DeepSeekMoE(config)
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
 
@@ -296,6 +301,10 @@ def train():
             model = models.gemma3.create_gemma3_from_config(config)
         elif args.model == "mistral":
             model = models.mistral.create_mistral_from_config(config)
+        elif args.model == "rwkv":
+            model = rwkv.create_rwkv_from_config(config)
+        elif args.model == "deepseek":
+            model = models.deepseekv3.create_deepseek_from_config(config)
         else:
             raise ValueError(f"Unsupported model type: {args.model}")
 
