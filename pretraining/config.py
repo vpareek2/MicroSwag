@@ -326,7 +326,7 @@ class DeepSeekMoETrainingConfig(BaseTrainingConfig):
 
 @dataclass
 class RWKVConfig:
-    """RWKV model architecture configuration (NanoTitan Adaptation ~125.4M)"""
+    """RWKV model architecture configuration, Params: 125,367,552"""
     model_type: str = "rwkv"
     vocab_size: int = 50304
     n_layer: int = 16
@@ -343,20 +343,14 @@ class RWKVConfig:
 
 @dataclass
 class RWKVTrainingConfig(BaseTrainingConfig):
-    """
-    RWKV specific training configuration.
-    NOTE: For the NanoTitan project's fair comparison goal, these parameters
-    are intentionally set to match the standard settings (e.g., GPT2TrainingConfig)
-    rather than potentially different defaults from RWKV's original scripts.
-    """
+    """RWKV specific training configuration. """
     weight_decay: float = 0.1
     learning_rate: float = 6e-4
-    betas: Tuple[float, float] = (0.9, 0.95) # AdamW betas
-    eps: float = 1e-8                       # AdamW epsilon
-    # Cosine decay schedule parameters
-    min_lr_ratio: float = 0.1   # lr_final = learning_rate * min_lr_ratio
-    warmup_steps: int = 715     # Number of linear warmup steps
-    max_steps: int = 19073      # Total number of training steps for decay
+    betas: Tuple[float, float] = (0.9, 0.95)
+    eps: float = 1e-8
+    min_lr_ratio: float = 0.1
+    warmup_steps: int = 715
+    max_steps: int = 19073
 
 # -------------------------------------------------------------------
 # CONFIGS
