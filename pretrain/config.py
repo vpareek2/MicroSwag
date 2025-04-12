@@ -299,25 +299,31 @@ class DeepSeekMoETrainingConfig(BaseTrainingConfig):
 
 @dataclass
 class RWKVConfig:
-    """RWKV model architecture configuration"""
-    block_size: int = 1024  # max sequence length
-    vocab_size: int = 50304  # number of tokens
-    n_layer: int = 12       # number of layers
-    n_embd: int = 768       # embedding dimension
-    n_head: int = 12        # number of attention heads
-    dim_ffn: int = 2048     # dimension of feed-forward network
-    norm_eps: float = 1e-5  # epsilon for normalization
+    """RWKV model architecture configuration (NanoTitan Adaptation)"""
+    model_type: str = "rwkv"    # Identifier for the model type
+    vocab_size: int = 50304    # Standard vocab size for the project
+    n_layer: int = 12          # Placeholder - Tune later for ~124M params
+    n_embd: int = 768          # Placeholder - Tune later for ~124M params
+    ctx_len: int = 1024        # Matches BaseTrainingConfig.sequence_length
+    head_size: int = 64        # Required by the specific RWKV v7 CUDA kernel used
+    grad_cp: int = 0           # Gradient checkpointing flag (0=False, 1=True)
 
 @dataclass
 class RWKVTrainingConfig(BaseTrainingConfig):
-    """RWKV specific training configuration"""
-    weight_decay: float = 0.1        # weight decay for optimizer
-    learning_rate: float = 6e-4      # base learning rate
-    min_lr_ratio: float = 0.1        # minimum learning rate as ratio of max lr
-    warmup_steps: int = 715          # number of warmup steps
-    max_steps: int = 19073           # maximum number of training steps
-    betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
-    eps: float = 1e-8                # epsilon parameter for AdamW
+    """
+    RWKV specific training configuration.
+    NOTE: For the NanoTitan project's fair comparison goal, these parameters
+    are intentionally set to match the standard settings (e.g., GPT2TrainingConfig)
+    rather than potentially different defaults from RWKV's original scripts.
+    """
+    weight_decay: float = 0.1
+    learning_rate: float = 6e-4
+    betas: Tuple[float, float] = (0.9, 0.95) # AdamW betas
+    eps: float = 1e-8                       # AdamW epsilon
+    # Cosine decay schedule parameters
+    min_lr_ratio: float = 0.1   # lr_final = learning_rate * min_lr_ratio
+    warmup_steps: int = 715     # Number of linear warmup steps
+    max_steps: int = 19073      # Total number of training steps for decay
 # -------------------------------------------------------------------
 # CONFIGS
 # -------------------------------------------------------------------
