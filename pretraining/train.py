@@ -18,7 +18,7 @@ import models.llama3
 import models.phi4
 import models.mistral
 import models.deepseekv3
-import models.rwkv.model as rwkv
+import models.rwkv
 
 def parse_args():
     """Parse command line arguments"""
@@ -27,7 +27,7 @@ def parse_args():
                         help='Model architecture to train (gpt2, llama, phi4, mistral, gemma3)')
     return parser.parse_args()
 
-def save_checkpoint(config, model, optimizer, step, val_loss, train_loader, log_dir):
+def save_checkpoint(config, raw_model, optimizer, step, val_loss, train_loader, log_dir):
     """Save a checkpoint of the model and training state"""
     # Create a checkpoint of the train loader
     train_loader_checkpoint = train_loader.get_loader_checkpoint()
@@ -37,9 +37,9 @@ def save_checkpoint(config, model, optimizer, step, val_loss, train_loader, log_
 
     # Create checkpoint
     checkpoint = {
-        'model': model.state_dict(),
+        'model': raw_model.state_dict(),
         'optimizer': optimizer.state_dict(),
-        'config': model.config,
+        'config': raw_model.config,
         'step': step,
         'val_loss': val_loss,
         'train_loader': train_loader_checkpoint,
@@ -192,7 +192,7 @@ def train():
             elif args.model == "mistral":
                 model = models.mistral.Mistral(checkpoint['config'])
             elif args.model == "rwkv":
-                model = rwkv.RWKV(checkpoint['config'])
+                model = models.rwkv.RWKV(checkpoint['config'])
             elif args.model == "deepseek":
                 model = models.deepseekv3.DeepSeekMoE(checkpoint['config'])
             else:
@@ -252,7 +252,7 @@ def train():
             elif args.model == "mistral":
                 model = models.mistral.create_mistral_from_config(config)
             elif args.model == "rwkv":
-                model = rwkv.create_rwkv_from_config(config)
+                model = models.rwkv.create_rwkv_from_config(config)
             elif args.model == "deepseek":
                 model = models.deepseekv3.DeepSeekMoE(config)
             else:
@@ -303,7 +303,7 @@ def train():
         elif args.model == "mistral":
             model = models.mistral.create_mistral_from_config(config)
         elif args.model == "rwkv":
-            model = rwkv.create_rwkv_from_config(config)
+            model = models.rwkv.create_rwkv_from_config(config)
         elif args.model == "deepseek":
             model = models.deepseekv3.create_deepseek_from_config(config)
         else:
@@ -359,15 +359,19 @@ def train():
 
                 # Save checkpoint if needed
                 if step > 0 and (step % config.model_training.checkpoint_interval == 0 or last_step):
-                    save_checkpoint(
-                        config,
-                        raw_model,
-                        optimizer,
-                        step,
-                        val_loss,
-                        train_loader,
-                        log_dir
-                    )
+                    if 'raw_model' in locals():
+                        save_checkpoint(
+                            config,
+                            raw_model,
+                            optimizer,
+                            step,
+                            val_loss,
+                            train_loader,
+                            log_dir
+                        )
+                    else:
+                        if master_process:
+                            print("Warning: raw_model not found, skipping checkpoint save.")
 
         # Run HellaSwag evaluation if needed
         if step % config.model_training.eval_interval == 0 or last_step:
