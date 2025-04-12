@@ -87,9 +87,6 @@ class DeepseekV3RotaryEmbedding(nn.Module): # Renamed from RoPE
 
         return cos.to(dtype=x.dtype), sin.to(dtype=x.dtype)
 
-# --- Assume RMSNorm, DeepseekV3MLP, DeepseekV3RotaryEmbedding ---
-# --- apply_rotary_pos_emb, rotate_half are defined as previously ---
-
 # Re-paste helper functions for completeness
 def rotate_half(x):
     x1 = x[..., : x.shape[-1] // 2]
@@ -127,16 +124,8 @@ def apply_rotary_pos_emb(q: Optional[torch.Tensor],
     return q_embed, k_embed
 
 
-# ==============================================================================
-# Full DeepseekV3Attention Implementation
-# ==============================================================================
-
 class DeepseekV3Attention(nn.Module):
-    """
-    DeepSeek V3 Multi-Head Latent Attention (MLA) module with KV Caching.
-
-    Mimics the structure from Hugging Face's implementation.
-    """
+    """ DeepSeek V3 Multi-Head Latent Attention (MLA) module with KV Caching."""
     def __init__(self, config: DeepSeekMoEConfig, layer_idx: Optional[int] = None):
         super().__init__()
         self.config = config
@@ -180,9 +169,7 @@ class DeepseekV3Attention(nn.Module):
             bias=config.attention_bias,
         )
 
-        # --- Attention Scaling ---
         self.scaling = self.head_dim_q ** -0.5
-        # TODO: Incorporate YaRN scaling from config.rope_scaling if needed
 
     def forward(
         self,
