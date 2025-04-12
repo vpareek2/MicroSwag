@@ -8,10 +8,7 @@ from typing import Dict, List, Optional, Union, Tuple, Any
 @dataclass
 class ModelConfig:
     """Base configuration class for model architectures"""
-    model_type: str = "gpt2"  # Identifier for the model type
-
-    # In ModelConfig class, update the get_model_specific_config method
-    # Update the ModelConfig class to include DeepSeekMoE
+    model_type: str
 
     def get_model_specific_config(self):
         """Return the model-specific configuration based on model_type"""
@@ -70,6 +67,8 @@ class BaseTrainingConfig:
 # MODEL-SPECIFIC CONFIGS
 # -------------------------------------------------------------------
 
+# GPT-2 Configs will be the base training hyperparameters for most models, this is meant to test architectures so while these parameters are most likely
+# not optimal, they are going to be the baseline. I will tune parameters later once I find the best architecture.
 @dataclass
 class GPT2Config:
     """GPT-2 model architecture configuration"""
@@ -94,29 +93,33 @@ class GPT2TrainingConfig(BaseTrainingConfig):
 @dataclass
 class LLaMAConfig:
     """LLaMA model architecture configuration"""
-    block_size: int = 1024  # max sequence length
-    vocab_size: int = 50304  # number of tokens (same as GPT-2 for compatibility with tokenizer)
-    n_layer: int = 12  # number of transformer layers
-    n_head: int = 12  # number of attention heads
-    n_kv_head: int = 4  # number of key/value heads for grouped query attention
-    n_embd: int = 768  # embedding dimension
-    ffn_dim_multiplier: float = 1.0  # multiplier for feed-forward layer dimension
-    multiple_of: int = 256  # multiple of for hidden dimension rounding
-    norm_eps: float = 1e-5  # epsilon for normalization
-    rope_theta: float = 10000.0  # base for rotary positional embeddings
-    use_scaled_rope: bool = False  # whether to use scaled rotary positional embeddings
+    block_size: int = 1024
+    vocab_size: int = 50304
+    n_layer: int = 12
+    n_head: int = 12
+    n_kv_head: int = 4
+    n_embd: int = 768
+    ffn_dim_multiplier: float = 1.0
+    multiple_of: int = 256
+    norm_eps: float = 1e-5
+    rope_theta: float = 500000.0
+    use_scaled_rope: bool = False
+
+    # Ensure n_head is divisible by n_kv_head in post_init or check during tuning
+    def __post_init__(self):
+        if self.n_head % self.n_kv_head != 0:
+            raise ValueError(f"n_head ({self.n_head}) must be divisible by n_kv_head ({self.n_kv_head})")
 
 @dataclass
 class LLaMATrainingConfig(BaseTrainingConfig):
     """LLaMA specific training configuration"""
-    # LLaMA specific optimization
-    weight_decay: float = 0.1  # weight decay for optimizer
-    learning_rate: float = 6e-4  # base learning rate
-    min_lr_ratio: float = 0.1  # minimum learning rate as ratio of max lr
-    warmup_steps: int = 715  # number of warmup steps
-    max_steps: int = 19073  # maximum number of training steps
-    betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
-    eps: float = 1e-8  # epsilon parameter for AdamW
+    weight_decay: float = 0.1
+    learning_rate: float = 6e-4
+    min_lr_ratio: float = 0.1
+    warmup_steps: int = 715
+    max_steps: int = 19073
+    betas: Tuple[float, float] = (0.9, 0.95)
+    eps: float = 1e-8
 
 @dataclass
 class Phi4Config:
