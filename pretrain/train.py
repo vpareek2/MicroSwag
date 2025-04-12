@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import argparse
 import torch
@@ -11,10 +12,11 @@ from utils import optimization
 from utils import evaluation
 
 import models.gpt2
+import models.gemma3
 import models.llama3
 import models.phi4
-import models.gemma3
 import models.mistral
+import models.rwkv.model as rwkv
 
 def parse_args():
     """Parse command line arguments"""
@@ -74,6 +76,33 @@ def train():
     # Load configuration
     config = Config()
     config.model.model_type = args.model
+
+    # RWKV specific setups, for the cuda kernels provided in the repo
+    if args.model == "rwkv":
+        print("Setting environment variables required for RWKV...")
+        try:
+            # Retrieve the specific RWKVConfig instance
+            model_config_rwkv = config.model.get_model_specific_config()
+            if not hasattr(model_config_rwkv, 'head_size'):
+                raise AttributeError("RWKVConfig missing 'head_size' attribute.")
+
+            os.environ['RWKV_HEAD_SIZE'] = str(model_config_rwkv.head_size)
+            os.environ['RWKV_MY_TESTING'] = 'x070' # Required for the v7 kernel logic
+            os.environ['RWKV_JIT_ON'] = '0' # Disable TorchScript JIT to avoid issues
+
+            # Potientially will have to add the model dir to the path if there are issues with compilation, something like:
+            # rwkv_model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'models', 'rwkv'))
+            # if rwkv_model_dir not in sys.path:
+            #     print(f"Adding {rwkv_model_dir} to sys.path for potential kernel compilation.")
+            #     sys.path.insert(0, rwkv_model_dir) # Add at the beginning
+
+            print(f"  Set RWKV_HEAD_SIZE={os.environ['RWKV_HEAD_SIZE']}")
+            print(f"  Set RWKV_MY_TESTING={os.environ['RWKV_MY_TESTING']}")
+            print(f"  Set RWKV_JIT_ON={os.environ['RWKV_JIT_ON']}")
+        except Exception as e:
+                print(f"ERROR setting RWKV environment variables: {e}")
+                print("Ensure RWKVConfig is correctly defined in config.py")
+                raise
 
     # Setup distributed training
     dist_config = distributed.setup_distributed()
@@ -160,6 +189,8 @@ def train():
                 model = models.gemma3.Gemma3(checkpoint['config'])
             elif args.model == "mistral":
                 model = models.mistral.Mistral(checkpoint['config'])
+            elif args.model == "rwkv":
+                model = rwkv.create_rwkv_from_config(checkpoint['config'])
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
             # Move model to device
@@ -172,7 +203,17 @@ def train():
             )
 
             # Load model state
+            print(f"Loading model state_dict for {args.model} from checkpoint...")
             raw_model.load_state_dict(checkpoint['model'])
+            print("Model state loaded.")
+
+            # Parameter count
+            if master_process:
+                if 'raw_model' in locals():
+                    total_params = sum(p.numel() for p in raw_model.parameters() if p.requires_grad)
+                    print(f"--- Resumed Model '{args.model}' ---")
+                    print(f"--- Trainable Parameters: {total_params:,} ---")
+                else: print("Warning: raw_model not found for parameter counting.")
 
             # Create optimizer and load its state
             optimizer = optimization.create_optimizer(
@@ -206,6 +247,8 @@ def train():
                 model = models.gemma3.create_gemma3_from_config(config)
             elif args.model == "mistral":
                 model = models.mistral.create_mistral_from_config(config)
+            elif args.model == "rwkv":
+                model = rwkv.create_rwkv_from_config(config)
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
 
@@ -217,6 +260,13 @@ def train():
                 dist_config["ddp_local_rank"],
                 use_compile=config.system.use_compile
             )
+
+            if master_process:
+                if 'raw_model' in locals():
+                    total_params = sum(p.numel() for p in raw_model.parameters() if p.requires_grad)
+                    print(f"--- Fresh Model '{args.model}' ---")
+                    print(f"--- Trainable Parameters: {total_params:,} ---")
+                else: print("Warning: raw_model not found for parameter counting.")
 
             # Create optimizer
             optimizer = optimization.create_optimizer(
