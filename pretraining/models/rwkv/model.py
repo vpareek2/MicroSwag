@@ -1,8 +1,5 @@
-# models/rwkv/model.py
-########################################################################################################
-# The RWKV Language Model - https://github.com/BlinkDL/RWKV-LM
+"""RWKV as per https://arxiv.org/abs/2305.13048 and https://github.com/BlinkDL/RWKV-LM"""
 # Adapted for NanoTitan project from v7 reference implementation, there are differences in training as well which could impact performance
-########################################################################################################
 
 import os
 import math
