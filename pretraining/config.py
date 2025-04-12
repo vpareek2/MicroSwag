@@ -219,8 +219,6 @@ class MistralTrainingConfig(BaseTrainingConfig):
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
 
-# In config.py
-
 @dataclass
 class DeepSeekMoEConfig:
     """DeepSeekMoE model architecture configuration, Total Params: 124,298,880, Active Params: 77,112,960"""
@@ -324,16 +322,24 @@ class DeepSeekMoETrainingConfig(BaseTrainingConfig):
     routing_balance_coef: float = 0.01  # coefficient for expert balancing loss
     z_loss_coef: float = 0.001  # coefficient for z-loss to stabilize gating
 
+# In config.py
+
 @dataclass
 class RWKVConfig:
-    """RWKV model architecture configuration (NanoTitan Adaptation)"""
-    model_type: str = "rwkv"    # Identifier for the model type
-    vocab_size: int = 50304    # Standard vocab size for the project
-    n_layer: int = 12          # Placeholder - Tune later for ~124M params
-    n_embd: int = 768          # Placeholder - Tune later for ~124M params
-    ctx_len: int = 1024        # Matches BaseTrainingConfig.sequence_length
-    head_size: int = 64        # Required by the specific RWKV v7 CUDA kernel used
-    grad_cp: int = 0           # Gradient checkpointing flag (0=False, 1=True)
+    """RWKV model architecture configuration (NanoTitan Adaptation ~125.4M)"""
+    model_type: str = "rwkv"
+    vocab_size: int = 50304
+    n_layer: int = 16
+    n_embd: int = 576
+    ctx_len: int = 1024
+    head_size: int = 64
+    grad_cp: int = 0
+    n_head: int = field(init=False)
+
+    def __post_init__(self):
+         if self.n_embd % self.head_size != 0:
+             raise ValueError(f"n_embd ({self.n_embd}) must be divisible by head_size ({self.head_size})")
+         self.n_head = self.n_embd // self.head_size
 
 @dataclass
 class RWKVTrainingConfig(BaseTrainingConfig):
@@ -351,6 +357,7 @@ class RWKVTrainingConfig(BaseTrainingConfig):
     min_lr_ratio: float = 0.1   # lr_final = learning_rate * min_lr_ratio
     warmup_steps: int = 715     # Number of linear warmup steps
     max_steps: int = 19073      # Total number of training steps for decay
+
 # -------------------------------------------------------------------
 # CONFIGS
 # -------------------------------------------------------------------
