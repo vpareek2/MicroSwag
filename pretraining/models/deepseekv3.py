@@ -1,3 +1,5 @@
+"""DeepSeekV3 as per https://arxiv.org/pdf/2412.19437"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
