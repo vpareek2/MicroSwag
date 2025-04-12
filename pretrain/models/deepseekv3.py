@@ -1006,7 +1006,6 @@ class DeepSeekMoE(nn.Module):
         optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, betas=betas, fused=use_fused) # Removed eps=1e-8 as it's often default
         return optimizer
 
-
 # Helper function to create model from config (as in original train script)
 def create_deepseek_from_config(config):
     """Helper function to create a DeepSeekMoE model from a config object"""

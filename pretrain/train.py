@@ -1,4 +1,5 @@
 import os
+from re import M
 import sys
 import time
 import argparse
@@ -191,7 +192,7 @@ def train():
             elif args.model == "mistral":
                 model = models.mistral.Mistral(checkpoint['config'])
             elif args.model == "rwkv":
-                model = rwkv.create_rwkv_from_config(checkpoint['config'])
+                model = rwkv.RWKV(checkpoint['config'])
             elif args.model == "deepseek":
                 model = models.deepseekv3.DeepSeekMoE(checkpoint['config'])
             else:
@@ -388,6 +389,7 @@ def train():
         model.train()
         optimizer.zero_grad()
         loss_accum = 0.0
+        aux_loss_accum = 0.0 # For MoE training
 
         for micro_step in range(grad_accum_steps):
             x, y = train_loader.next_batch()
@@ -398,14 +400,30 @@ def train():
                 model.require_backward_gradient_sync = (micro_step == grad_accum_steps - 1)
 
             with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
-                logits, loss = model(x, y)
+                logits, combined_loss = model(x, y)
 
-            loss = loss / grad_accum_steps
-            loss_accum += loss.detach()
-            loss.backward()
+                if args.model == "deepseek" and model.training:
+                    # Recalculate min loss for logging
+                    main_loss = F.cross_entropy(logits.view(-1, logits.size(-1)), y.view(-1), ignore_index=-1)
+                    # Calculate aux loss
+                    aux_loss = combined_loss - main_loss
+                else:
+                    main_loss = combined_loss
+                    aux_loss = torch.tensor(0.0, device=main_loss.device, dtype=main_loss.dtype)
+
+            # Scale the combined loss for gradient accumulation
+            loss_to_backward = combined_loss / grad_accum_steps
+
+            # Accumulate detached losses for logging
+            loss_accum += main_loss.detach()
+            aux_loss_accum += aux_loss.detach() # Accumulate aux loss
+
+            # Backward pass
+            loss_to_backward.backward()
 
         # Average loss across processes if DDP
         loss_accum = distributed.all_reduce_mean(loss_accum, dist_config["ddp"])
+        aux_loss_accum = distributed.all_reduce_mean(aux_loss_accum, dist_config["ddp"])
 
         # Clip gradients
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), config.model_training.grad_clip)
@@ -426,10 +444,19 @@ def train():
         tokens_processed = B * T * grad_accum_steps * ddp_world_size
         tokens_per_sec = tokens_processed / dt
 
-        if master_process: # <--- IMPORTANT: Only prints on rank 0
-            print(f"step: {step:5d} | loss: {loss_accum.item():.6f} | lr: {lr:.4e} | norm: {norm:.4f} | dt: {dt*1000:.2f}ms | tok/sec: {tokens_per_sec:.2f}")
+        if master_process:
+            log_str = f"step: {step:5d} | loss: {loss_accum.item():.6f}"
+            if args.model == "deepseek": # Add aux loss log for deepseek
+                    log_str += f" | aux: {aux_loss_accum.item():.6f}"
+            log_str += f" | lr: {lr:.4e} | norm: {norm:.4f} | dt: {dt*1000:.2f}ms | tok/sec: {tokens_per_sec:.2f}"
+            print(log_str)
+
+            # Write to log file
             with open(log_file, "a") as f:
-                f.write(f"{step} train {loss_accum.item():.6f}\n")
+                log_entry = f"{step} train {loss_accum.item():.6f}"
+                if args.model == "deepseek": # Add aux loss to file log too
+                        log_entry += f" aux {aux_loss_accum.item():.6f}"
+                f.write(log_entry + "\n")
 
     # Clean up distributed training
     distributed.cleanup_distributed(dist_config["ddp"])
