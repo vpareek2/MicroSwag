@@ -4,7 +4,7 @@
 apt-get update
 
 # Install basic tools
-apt-get install git vim nano unzip zip rsync ninja-build -y
+apt-get install git vim nano unzip zip rsync ninja-build tmux -y
 
 # Clone the GitHub repo (public read access)
 git clone https://github.com/vpareek2/NanoTitan.git

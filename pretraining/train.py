@@ -59,7 +59,7 @@ def validate(model, val_loader, dist_config, device, device_type, steps=20):
             x, y = val_loader.next_batch()
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
-                logits, loss = model(x, y)
+                logits, loss, _ = model(x, y)
             val_loss_accum += loss.detach()
 
         val_loss_accum /= steps
@@ -406,7 +406,7 @@ def train():
                 model.require_backward_gradient_sync = (micro_step == grad_accum_steps - 1)
 
             with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
-                logits, combined_loss = model(x, y)
+                logits, combined_loss, _ = model(x, y)
 
                 if args.model == "deepseek" and model.training:
                     # Recalculate min loss for logging
