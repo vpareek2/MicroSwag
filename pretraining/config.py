@@ -60,8 +60,8 @@ class BaseTrainingConfig:
     grad_clip: float = 1.0  # gradient clipping value
 
     # Schedule settings
-    eval_interval: int = 250  # interval between evaluations
-    checkpoint_interval: int = 2500  # interval between checkpoints
+    eval_interval: int = 20  # interval between evaluations
+    checkpoint_interval: int = 40  # interval between checkpoints
 
 # -------------------------------------------------------------------
 # MODEL-SPECIFIC CONFIGS
@@ -349,8 +349,8 @@ class RWKVTrainingConfig(BaseTrainingConfig):
     betas: Tuple[float, float] = (0.9, 0.95)
     eps: float = 1e-8
     min_lr_ratio: float = 0.1
-    warmup_steps: int = 715
-    max_steps: int = 19073
+    warmup_steps: int = 10
+    max_steps: int = 50
 
 # -------------------------------------------------------------------
 # CONFIGS
@@ -360,7 +360,7 @@ class RWKVTrainingConfig(BaseTrainingConfig):
 class DataConfig:
     """Data loading and processing configuration"""
     data_root: str = "edu_fineweb10B"  # root directory for data
-    val_loss_steps: int = 20  # number of steps for validation loss calculation
+    val_loss_steps: int = 5  # number of steps for validation loss calculation
 
 @dataclass
 class SystemConfig:
@@ -387,4 +387,3 @@ class Config:
 
 # Default configuration
 default_config = Config()
-
