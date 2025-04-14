@@ -1,3 +1,4 @@
+# Testing config
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union, Tuple, Any
 
@@ -313,16 +314,14 @@ class DeepSeekMoETrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1  # weight decay for optimizer
     learning_rate: float = 6e-4  # base learning rate
     min_lr_ratio: float = 0.1  # minimum learning rate as ratio of max lr
-    warmup_steps: int = 715  # number of warmup steps
-    max_steps: int = 19073  # maximum number of training steps
+    warmup_steps: int = 10  # number of warmup steps
+    max_steps: int = 50  # maximum number of training steps
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
 
     # MoE-specific training parameters
     routing_balance_coef: float = 0.01  # coefficient for expert balancing loss
     z_loss_coef: float = 0.001  # coefficient for z-loss to stabilize gating
-
-# In config.py
 
 @dataclass
 class RWKVConfig:
