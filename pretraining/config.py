@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Union, Tuple, Any
 @dataclass
 class ModelConfig:
     """Base configuration class for model architectures"""
-    model_type: str
+    model_type: str = "rwkv"
 
     def get_model_specific_config(self):
         """Return the model-specific configuration based on model_type"""
