@@ -70,7 +70,7 @@ def wrap_model_for_distributed(model, device, ddp, ddp_local_rank, use_compile=T
 
     # Wrap with DDP if needed
     if ddp:
-        model = DDP(model, device_ids=[ddp_local_rank])
+        model = DDP(model, device_ids=[ddp_local_rank],  find_unused_parameters=True)
 
     # Get raw model for checkpointing
     raw_model = unwrap_model(model)
