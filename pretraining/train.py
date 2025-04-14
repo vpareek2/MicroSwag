@@ -372,21 +372,22 @@ def train():
                         if master_process:
                             print("Warning: raw_model not found, skipping checkpoint save.")
 
-        # Run HellaSwag evaluation if needed
-        if step % config.model_training.eval_interval == 0 or last_step:
-            results = evaluation.evaluate_hellaswag(
-                model,
-                device,
-                device_type,
-                dist_config["ddp_rank"],
-                dist_config["ddp_world_size"],
-                distributed
-            )
+        # TURNING OFF HELLASWAG FOR TESTING PURPOSES
+        # # Run HellaSwag evaluation if needed
+        # if step % config.model_training.eval_interval == 0 or last_step:
+        #     results = evaluation.evaluate_hellaswag(
+        #         model,
+        #         device,
+        #         device_type,
+        #         dist_config["ddp_rank"],
+        #         dist_config["ddp_world_size"],
+        #         distributed
+        #     )
 
-            if master_process:
-                print(f"HellaSwag accuracy: {results['correct']}/{results['total']}={results['accuracy']:.4f}")
-                with open(log_file, "a") as f:
-                    f.write(f"{step} hella {results['accuracy']:.4f}\n")
+        #     if master_process:
+        #         print(f"HellaSwag accuracy: {results['correct']}/{results['total']}={results['accuracy']:.4f}")
+        #         with open(log_file, "a") as f:
+        #             f.write(f"{step} hella {results['accuracy']:.4f}\n")
 
         # Forward and backward passes with gradient accumulation
         model.train()
