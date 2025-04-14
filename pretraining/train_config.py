@@ -269,6 +269,7 @@ class DeepSeekMoEConfig:
     hidden_act: str = "silu"    # Standard activation
     initializer_range: float = 0.02 # Standard init range
     tie_word_embeddings: bool = True # Set to True for parameter efficiency
+    use_cache: bool = False
 
     # --- Derived Attributes ---
     qk_head_dim: int = field(init=False)
