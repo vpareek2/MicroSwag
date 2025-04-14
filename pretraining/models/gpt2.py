@@ -116,7 +116,7 @@ class GPT(nn.Module):
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
         return logits, loss
 
-    def configure_optimizers(self, weight_decay, learning_rate, device_type, master_process=True):
+    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type, master_process=True):
         # start with all of the candidate parameters (that require grad)
         param_dict = {pn: p for pn, p in self.named_parameters()}
         param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}

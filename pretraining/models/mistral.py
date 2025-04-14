@@ -251,7 +251,7 @@ class Mistral(nn.Module):
 
         return logits, loss
 
-    def configure_optimizers(self, weight_decay, learning_rate, device_type, master_process=True):
+    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type, master_process=True):
         param_dict = {pn: p for pn, p in self.named_parameters() if p.requires_grad}
 
         # Weight decay for 2D parameters, no decay for others
