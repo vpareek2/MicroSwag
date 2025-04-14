@@ -450,17 +450,25 @@ def train():
         tokens_processed = B * T * grad_accum_steps * ddp_world_size
         tokens_per_sec = tokens_processed / dt
 
-        if master_process:
+        # GPU Memory Logging
+        gpu_mem_gb = 0.0
+        if device_type == "cuda":
+            # Get allocated memory in GB for the current device
+            gpu_mem_bytes = torch.cuda.memory_allocated(device=device)
+            gpu_mem_gb = gpu_mem_bytes / (1024**3) # Convert bytes to GB
+
+         if master_process:
             log_str = f"step: {step:5d} | loss: {loss_accum.item():.6f}"
-            if args.model == "deepseek": # Add aux loss log for deepseek
+            if args.model == "deepseek":
                     log_str += f" | aux: {aux_loss_accum.item():.6f}"
-            log_str += f" | lr: {lr:.4e} | norm: {norm:.4f} | dt: {dt*1000:.2f}ms | tok/sec: {tokens_per_sec:.2f}"
+            # Add memory to the log string
+            log_str += f" | lr: {lr:.4e} | norm: {norm:.4f} | dt: {dt*1000:.2f}ms | tok/sec: {tokens_per_sec:.2f} | gpu_mem: {gpu_mem_gb:.2f}GB"
             print(log_str)
 
-            # Write to log file
+            # Write to log file (optional: add memory here too)
             with open(log_file, "a") as f:
                 log_entry = f"{step} train {loss_accum.item():.6f}"
-                if args.model == "deepseek": # Add aux loss to file log too
+                if args.model == "deepseek":
                         log_entry += f" aux {aux_loss_accum.item():.6f}"
                 f.write(log_entry + "\n")
 

@@ -61,21 +61,27 @@ def cleanup_distributed(ddp):
 
 def wrap_model_for_distributed(model, device, ddp, ddp_local_rank, use_compile=True):
     """Prepare a model for distributed training by applying compile and DDP wrappers."""
+    # Get the original raw model instance before any wrapping
+    # This is important to get the correct class name before torch.compile might wrap it
     raw_model_instance = model
 
     model.to(device)
 
     if use_compile:
+        # Apply compile *before* DDP if possible
+        # Note: DDP(torch.compile(model)) is generally recommended over torch.compile(DDP(model))
         model = torch.compile(model)
-        print("Model compiled with torch.compile")
 
     if ddp:
         # Decide whether to use find_unused_parameters based on model type
-        # Check the class name of the original, unwrapped model instance
         model_class_name = type(raw_model_instance).__name__
-        find_unused = (model_class_name == 'RWKV') # Only True if it's an RWKV model
 
-        # Optional: Print the decision for confirmation (only on master process)
+        # Enable the flag only for RWKV and DeepSeekMoE
+        if model_class_name in ['RWKV', 'DeepSeekMoE']:
+            find_unused = True
+        else:
+            find_unused = False
+
         master_process = int(os.environ.get('RANK', 0)) == 0
         if master_process:
             print(f"DDP Info: Setting find_unused_parameters={find_unused} for model type {model_class_name}")
@@ -83,10 +89,10 @@ def wrap_model_for_distributed(model, device, ddp, ddp_local_rank, use_compile=T
         # Pass the conditional flag to DDP
         model = DDP(model, device_ids=[ddp_local_rank], find_unused_parameters=find_unused)
 
-    # Get the final unwrapped model (after potential DDP and compile) for checkpointing/optimizer
+    # Get the final unwrapped model (after potential DDP and compile)
     final_raw_model = unwrap_model(model)
 
-    return model, final_raw_model # Return potentially wrapped model and the final raw model
+    return model, final_raw_model
 
 def unwrap_model(model):
     """Unwrap a model from DDP and torch.compile wrappers."""
