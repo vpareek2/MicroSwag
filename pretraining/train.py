@@ -77,6 +77,8 @@ def train():
     # Load configuration
     config = Config()
     config.model.model_type = args.model
+    config.model_specific = config.model.get_model_specific_config()
+    config.model_training = config.model.get_model_training_config()
 
     # RWKV specific setups, for the cuda kernels provided in the repo
     if args.model == "rwkv":
