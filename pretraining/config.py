@@ -359,7 +359,7 @@ class RWKVTrainingConfig(BaseTrainingConfig):
 @dataclass
 class DataConfig:
     """Data loading and processing configuration"""
-    data_root: str = "edu_fineweb10B"  # root directory for data
+    data_root: str = "utils/edu_fineweb10B"  # root directory for data
     val_loss_steps: int = 5  # number of steps for validation loss calculation
 
 @dataclass
