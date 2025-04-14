@@ -457,7 +457,7 @@ def train():
             gpu_mem_bytes = torch.cuda.memory_allocated(device=device)
             gpu_mem_gb = gpu_mem_bytes / (1024**3) # Convert bytes to GB
 
-         if master_process:
+        if master_process:
             log_str = f"step: {step:5d} | loss: {loss_accum.item():.6f}"
             if args.model == "deepseek":
                     log_str += f" | aux: {aux_loss_accum.item():.6f}"
