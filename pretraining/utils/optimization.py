@@ -36,6 +36,7 @@ def create_optimizer(model, config, device_type, master_process=True):
     return model.configure_optimizers(
         weight_decay=config.model_training.weight_decay,
         learning_rate=config.model_training.learning_rate,
+        betas=config.model_training.betas,
         device_type=device_type,
         master_process=master_process
     )
