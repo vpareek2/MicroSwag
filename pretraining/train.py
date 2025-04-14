@@ -253,7 +253,7 @@ def train():
             elif args.model == "rwkv":
                 model = models.rwkv.create_rwkv_from_config(config)
             elif args.model == "deepseek":
-                model = models.deepseekv3.DeepSeekMoE(config)
+                model = models.deepseekv3.create_deepseek_from_config(config)
             else:
                 raise ValueError(f"Unsupported model type: {args.model}")
 
