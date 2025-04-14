@@ -1,6 +1,5 @@
 .venv
 **/.DS_Store
-setup.sh
 private_key.pem
 **/__pycache__
 **/edu_fineweb10B
