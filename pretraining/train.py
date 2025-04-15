@@ -48,7 +48,7 @@ def save_checkpoint(config, raw_model, optimizer, step, val_loss, train_loader, 
     torch.save(checkpoint, checkpoint_path)
     print(f"Saved checkpoint to {checkpoint_path}")
 
-def validate(model, val_loader, dist_config, device, device_type, steps=20):
+def validate(model, val_loader, dist_config, device, device_type, model_type_str, steps=20):
     """Run validation on the model"""
     model.eval()
     val_loader.reset()
@@ -59,7 +59,12 @@ def validate(model, val_loader, dist_config, device, device_type, steps=20):
             x, y = val_loader.next_batch()
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
-                logits, loss, _ = model(x, y)
+                # Use the passed-in model_type_str here
+                outputs = model(x, y)
+                if model_type_str == "deepseek":
+                    logits, loss, _ = outputs
+                else:
+                    logits, loss = outputs
             val_loss_accum += loss.detach()
 
         val_loss_accum /= steps
@@ -350,6 +355,7 @@ def train():
                 dist_config,
                 device,
                 device_type,
+                args.model,
                 steps=config.data.val_loss_steps
             )
 
@@ -406,14 +412,17 @@ def train():
                 model.require_backward_gradient_sync = (micro_step == grad_accum_steps - 1)
 
             with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
-                logits, combined_loss, _ = model(x, y)
 
-                if args.model == "deepseek" and model.training:
-                    # Recalculate min loss for logging
+                outputs = model(x, y)
+
+                if args.model == "deepseek":
+                    logits, combined_loss, _ = outputs # Unpack 3 for deepseek
+                    # Calculate aux loss explicitly for logging
                     main_loss = F.cross_entropy(logits.view(-1, logits.size(-1)), y.view(-1), ignore_index=-1)
-                    # Calculate aux loss
                     aux_loss = combined_loss - main_loss
                 else:
+                    logits, combined_loss = outputs # Unpack 2 for others
+                    # No separate aux loss for other models
                     main_loss = combined_loss
                     aux_loss = torch.tensor(0.0, device=main_loss.device, dtype=main_loss.dtype)
 
