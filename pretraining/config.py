@@ -170,6 +170,7 @@ class Gemma3Config:
     use_qk_norm: bool = True
     rope_local_theta: float = 10000.0
     rope_global_theta: float = 1000000.0
+    tie_word_embeddings: bool = True
 
     def __post_init__(self):
          if self.n_head % self.n_kv_head != 0:
