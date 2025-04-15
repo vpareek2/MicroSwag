@@ -95,24 +95,26 @@ class GPT2TrainingConfig(BaseTrainingConfig):
 
 @dataclass
 class LLaMAConfig:
-    """LLaMA model architecture configuration, Params: 124,467,904"""
+    """LLaMA model architecture configuration, Target Params: ~120.4M"""
     model_type: str = "llama"
     block_size: int = 1024
     vocab_size: int = 50304
-    n_layer: int = 16
-    n_embd: int = 704
-    n_head: int = 8
-    n_kv_head: int = 2
-    ffn_dim_multiplier: float = 1.0
-    multiple_of: int = 256
-    norm_eps: float = 1e-5
-    rope_theta: float = 500000.0
+    n_layer: int = 12             # Reduced from 16
+    n_embd: int = 640             # Reduced from 704
+    n_head: int = 8               # Kept
+    n_kv_head: int = 4             # Changed from 2 (GQA 2:1)
+    ffn_dim_multiplier: float = 1.0 # Keep default LLaMA MLP calc (uses 2/3 rule internally)
+    multiple_of: int = 256         # Keep
+    norm_eps: float = 1e-5         # Keep
+    rope_theta: float = 500000.0   # Keep LLaMA3 default
 
     def __post_init__(self):
+        # Hidden dim calculated internally in MLP class now
+        # Validation checks:
         if self.n_head % self.n_kv_head != 0:
             raise ValueError(f"n_head ({self.n_head}) must be divisible by n_kv_head ({self.n_kv_head})")
         if self.n_embd % self.n_head != 0:
-            raise ValueError(f"n_embd ({self.n_embd}) must be divisible by n_head ({self.n_head})")
+             raise ValueError(f"n_embd ({self.n_embd}) must be divisible by n_head ({self.n_head})")
 
 @dataclass
 class LLaMATrainingConfig(BaseTrainingConfig):
