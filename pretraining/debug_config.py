@@ -1,3 +1,4 @@
+# Testing config
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union, Tuple, Any
 
@@ -8,7 +9,7 @@ from typing import Dict, List, Optional, Union, Tuple, Any
 @dataclass
 class ModelConfig:
     """Base configuration class for model architectures"""
-    model_type: str
+    model_type: str = "rwkv"
 
     def get_model_specific_config(self):
         """Return the model-specific configuration based on model_type"""
@@ -60,8 +61,8 @@ class BaseTrainingConfig:
     grad_clip: float = 1.0  # gradient clipping value
 
     # Schedule settings
-    eval_interval: int = 250  # interval between evaluations
-    checkpoint_interval: int = 2500  # interval between checkpoints
+    eval_interval: int = 20  # interval between evaluations
+    checkpoint_interval: int = 40  # interval between checkpoints
 
 # -------------------------------------------------------------------
 # MODEL-SPECIFIC CONFIGS
@@ -85,8 +86,8 @@ class GPT2TrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1  # weight decay for optimizer
     learning_rate: float = 6e-4  # base learning rate
     min_lr_ratio: float = 0.1  # minimum learning rate as ratio of max lr
-    warmup_steps: int = 715  # number of warmup steps
-    max_steps: int = 19073  # maximum number of training steps
+    warmup_steps: int = 20  # number of warmup steps
+    max_steps: int = 50  # maximum number of training steps
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
 
@@ -94,24 +95,26 @@ class GPT2TrainingConfig(BaseTrainingConfig):
 
 @dataclass
 class LLaMAConfig:
-    """LLaMA model architecture configuration, Params: 124,467,904"""
+    """LLaMA model architecture configuration, Target Params: ~120.4M"""
     model_type: str = "llama"
     block_size: int = 1024
     vocab_size: int = 50304
-    n_layer: int = 16
-    n_embd: int = 704
-    n_head: int = 8
-    n_kv_head: int = 2
-    ffn_dim_multiplier: float = 1.0
-    multiple_of: int = 256
-    norm_eps: float = 1e-5
-    rope_theta: float = 500000.0
+    n_layer: int = 13             # Reduced from 16
+    n_embd: int = 640             # Reduced from 704
+    n_head: int = 8               # Kept
+    n_kv_head: int = 4             # Changed from 2 (GQA 2:1)
+    ffn_dim_multiplier: float = 1.0 # Keep default LLaMA MLP calc (uses 2/3 rule internally)
+    multiple_of: int = 256         # Keep
+    norm_eps: float = 1e-5         # Keep
+    rope_theta: float = 500000.0   # Keep LLaMA3 default
 
     def __post_init__(self):
+        # Hidden dim calculated internally in MLP class now
+        # Validation checks:
         if self.n_head % self.n_kv_head != 0:
             raise ValueError(f"n_head ({self.n_head}) must be divisible by n_kv_head ({self.n_kv_head})")
         if self.n_embd % self.n_head != 0:
-            raise ValueError(f"n_embd ({self.n_embd}) must be divisible by n_head ({self.n_head})")
+             raise ValueError(f"n_embd ({self.n_embd}) must be divisible by n_head ({self.n_head})")
 
 @dataclass
 class LLaMATrainingConfig(BaseTrainingConfig):
@@ -119,8 +122,8 @@ class LLaMATrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1
     learning_rate: float = 6e-4
     min_lr_ratio: float = 0.1
-    warmup_steps: int = 715
-    max_steps: int = 19073
+    warmup_steps: int = 10
+    max_steps: int = 50
     betas: Tuple[float, float] = (0.9, 0.95)
     eps: float = 1e-8
 
@@ -167,6 +170,7 @@ class Gemma3Config:
     use_qk_norm: bool = True
     rope_local_theta: float = 10000.0
     rope_global_theta: float = 1000000.0
+    tie_word_embeddings: bool = True
 
     def __post_init__(self):
          if self.n_head % self.n_kv_head != 0:
@@ -180,8 +184,8 @@ class Gemma3TrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1
     learning_rate: float = 6e-4
     min_lr_ratio: float = 0.1
-    warmup_steps: int = 715
-    max_steps: int = 19073
+    warmup_steps: int = 10
+    max_steps: int = 50
     betas: Tuple[float, float] = (0.9, 0.95)
     eps: float = 1e-8
 
@@ -214,8 +218,8 @@ class MistralTrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1  # weight decay for optimizer
     learning_rate: float = 6e-4  # base learning rate
     min_lr_ratio: float = 0.1  # minimum learning rate as ratio of max lr
-    warmup_steps: int = 715  # number of warmup steps
-    max_steps: int = 19073  # maximum number of training steps
+    warmup_steps: int = 10  # number of warmup steps
+    max_steps: int = 50  # maximum number of training steps
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
 
@@ -270,7 +274,6 @@ class DeepSeekMoEConfig:
     initializer_range: float = 0.02 # Standard init range
     tie_word_embeddings: bool = True # Set to True for parameter efficiency
     use_cache: bool = False
-
     # --- Derived Attributes ---
     qk_head_dim: int = field(init=False)
     num_key_value_heads: int = field(init=False)
@@ -314,16 +317,14 @@ class DeepSeekMoETrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1  # weight decay for optimizer
     learning_rate: float = 6e-4  # base learning rate
     min_lr_ratio: float = 0.1  # minimum learning rate as ratio of max lr
-    warmup_steps: int = 715  # number of warmup steps
-    max_steps: int = 19073  # maximum number of training steps
+    warmup_steps: int = 10  # number of warmup steps
+    max_steps: int = 50  # maximum number of training steps
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
 
     # MoE-specific training parameters
     routing_balance_coef: float = 0.01  # coefficient for expert balancing loss
     z_loss_coef: float = 0.001  # coefficient for z-loss to stabilize gating
-
-# In config.py
 
 @dataclass
 class RWKVConfig:
@@ -350,8 +351,8 @@ class RWKVTrainingConfig(BaseTrainingConfig):
     betas: Tuple[float, float] = (0.9, 0.95)
     eps: float = 1e-8
     min_lr_ratio: float = 0.1
-    warmup_steps: int = 715
-    max_steps: int = 19073
+    warmup_steps: int = 10
+    max_steps: int = 50
 
 # -------------------------------------------------------------------
 # CONFIGS
@@ -360,17 +361,18 @@ class RWKVTrainingConfig(BaseTrainingConfig):
 @dataclass
 class DataConfig:
     """Data loading and processing configuration"""
-    data_root: str = "edu_fineweb10B"  # root directory for data
-    val_loss_steps: int = 20  # number of steps for validation loss calculation
+    data_root: str = "utils/edu_fineweb10B"  # root directory for data
+    val_loss_steps: int = 5  # number of steps for validation loss calculation
 
 @dataclass
 class SystemConfig:
     """System and hardware configuration"""
     seed: int = 1337  # random seed
-    use_compile: bool = True  # whether to use torch.compile
+    use_compile: bool = False # whether to use torch.compile
     resume_training: bool = True  # whether to resume training
     log_dir: str = "log"  # directory for logs and checkpoints
     float32_matmul_precision: str = "high"  # precision for float32 matmul
+    
 
 @dataclass
 class Config:
