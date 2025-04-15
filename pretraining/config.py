@@ -368,10 +368,11 @@ class DataConfig:
 class SystemConfig:
     """System and hardware configuration"""
     seed: int = 1337  # random seed
-    use_compile: bool = True  # whether to use torch.compile
+    use_compile: bool = False # whether to use torch.compile
     resume_training: bool = True  # whether to resume training
     log_dir: str = "log"  # directory for logs and checkpoints
     float32_matmul_precision: str = "high"  # precision for float32 matmul
+    
 
 @dataclass
 class Config:
