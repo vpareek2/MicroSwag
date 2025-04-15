@@ -99,7 +99,7 @@ class LLaMAConfig:
     model_type: str = "llama"
     block_size: int = 1024
     vocab_size: int = 50304
-    n_layer: int = 12             # Reduced from 16
+    n_layer: int = 13             # Reduced from 16
     n_embd: int = 640             # Reduced from 704
     n_head: int = 8               # Kept
     n_kv_head: int = 4             # Changed from 2 (GQA 2:1)
