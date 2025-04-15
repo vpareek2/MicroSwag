@@ -5,6 +5,7 @@ import argparse
 import torch
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
+import wandb
 
 from config import Config
 from utils.dataloader import DataLoader
@@ -19,14 +20,6 @@ import models.phi4
 import models.mistral
 import models.deepseekv3
 import models.rwkv
-
-# ===================================================
-# parse_args, save_checkpoint, validate functions
-# are assumed to be defined above here as before
-# ===================================================
-# Example validate function signature (ensure it's correct):
-# def validate(model, val_loader, dist_config, device, device_type, model_type_str, steps=20):
-#     ... (implementation with conditional unpacking) ...
 
 def parse_args():
     """Parse command line arguments"""
@@ -139,12 +132,29 @@ def train():
     device_type = dist_config["device_type"]
     master_process = dist_config["master_process"]
 
+    # === W&B Initialization ===
+    # Convert config dataclasses to dicts for logging
+    config_dict = {
+        "model_type": config.model.model_type,
+        "model_specific": config.model_specific.__dict__,
+        "model_training": config.model_training.__dict__,
+        "data": config.data.__dict__,
+        "system": config.system.__dict__,
+        "cli_args": vars(args) # Log command line args too
+    }
+    # Remove non-serializable items if any (e.g., fields with init=False)
+    config_dict['model_specific'].pop('qk_head_dim', None)
+    config_dict['model_specific'].pop('num_key_value_heads', None)
+    config_dict['model_specific'].pop('num_key_value_groups', None)
+    if 'n_head' in config_dict['model_specific']: # RWKV doesn't have n_head initially
+        config_dict['model_specific'].pop('n_head', None)
+
     # Set up precision
     if master_process:
         print(f"Setting float32 matmul precision to {config.system.float32_matmul_precision}")
     torch.set_float32_matmul_precision(config.system.float32_matmul_precision)
 
-    # Set up logging
+    # Set up logging directory (still needed for checkpoints)
     log_dir = config.system.log_dir
     os.makedirs(log_dir, exist_ok=True) # Ensures log dir exists
     log_file = os.path.join(log_dir, "log.txt")
@@ -185,6 +195,14 @@ def train():
     if master_process:
         print(f"Total desired batch size: {total_batch_size}")
         print(f"=> calculated gradient accumulation steps: {grad_accum_steps}")
+
+        # Generate a unique run name after calculating grad_accum_steps
+        run_name = f"{args.model}_B{config.model_training.micro_batch_size*dist_config['ddp_world_size']*grad_accum_steps/1024:.0f}k_{time.strftime('%Y%m%d_%H%M%S')}"
+        wandb.init(
+            project="NanoTitan", # Your project name
+            name=run_name,
+            config=config_dict # Log your configuration
+        )
 
     # Resume or start training
     current_step = 0
@@ -356,13 +374,6 @@ def train():
         if master_process:
             print("Starting fresh training run (resume_training=False)")
 
-        # ====> DUPLICATE DEBUG PRINT BLOCK (if needed, otherwise remove) <====
-        # You could put the debug prints here if resume_training is False
-        # if master_process:
-        #     print(f"DEBUG (resume=False): Creating model '{args.model}' using config type: {type(config.model_specific)}")
-        #     # ... etc ...
-        # ===================================================================
-
         # Create a new model using the CURRENT script's config
         if args.model == "gpt2":
             model = models.gpt2.create_gpt_from_config(config)
@@ -412,6 +423,11 @@ def train():
              except FileNotFoundError:
                  pass
 
+    # === W&B Watch Model (Optional) ===
+    # if master_process:
+    #     wandb.watch(model, log="gradients", log_freq=1000)
+    # ==================================
+
     # Get LR scheduler
     get_lr = optimization.get_lr_scheduler(config, optimizer)
 
@@ -421,6 +437,10 @@ def train():
     for step in range(current_step, max_steps):
         t0 = time.time()
         last_step = (step == max_steps - 1)
+
+        # --- Dictionary to store metrics for this step ---
+        log_data = {}
+        # -------------------------------------------------
 
         # Evaluate validation loss if needed
         if step % config.model_training.eval_interval == 0 or last_step:
@@ -434,6 +454,8 @@ def train():
                 args.model, # Pass model type string
                 steps=config.data.val_loss_steps
             )
+
+            log_data['val_loss'] = val_loss # Add to log dict
 
             if master_process:
                 print(f"validation loss: {val_loss:.4f}")
@@ -468,10 +490,16 @@ def train():
                 distributed
             )
 
+            log_data['hellaswag_acc'] = results['accuracy'] # Add to log dict
+            log_data['hellaswag_correct'] = results['correct']
+            log_data['hellaswag_total'] = results['total']
+
             if master_process:
                 print(f"HellaSwag accuracy: {results['correct']}/{results['total']}={results['accuracy']:.4f}")
                 with open(log_file, "a") as f:
                     f.write(f"{step} hella {results['accuracy']:.4f}\n")
+
+            model.train() # Set back to train mode
 
         # Forward and backward passes with gradient accumulation
         model.train()
@@ -575,6 +603,22 @@ def train():
             # Optional: Reset peak stats for next interval if desired
             # torch.cuda.reset_peak_memory_stats(device=device)
 
+        # === W&B Logging ===
+        # Add training metrics to log_data
+        log_data['train_loss'] = loss_accum.item()
+        log_data['learning_rate'] = lr
+        log_data['grad_norm'] = norm.item()
+        log_data['timing_ms'] = dt * 1000
+        log_data['throughput_tok_sec'] = tokens_per_sec
+        log_data['gpu_mem_gb_reserved'] = gpu_mem_gb_max_reserved
+        if args.model == "deepseek":
+            log_data['aux_loss'] = aux_loss_accum.item()
+
+        # Log the combined dictionary for this step
+        if master_process:
+            wandb.log(log_data, step=step)
+        # ===================
+
         if master_process:
             log_str = f"step: {step:5d} | loss: {loss_accum.item():.6f}"
             if args.model == "deepseek":
@@ -593,8 +637,11 @@ def train():
     # Clean up distributed training
     distributed.cleanup_distributed(dist_config["ddp"])
 
+    # === W&B Finish ===
     if master_process:
         print("Training complete!")
+        wandb.finish()
+    # ==================
 
 # ===================================================
 # === Main execution block ===
