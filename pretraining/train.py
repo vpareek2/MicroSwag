@@ -193,8 +193,14 @@ def train():
         print(f"Total desired batch size: {total_batch_size}")
         print(f"=> calculated gradient accumulation steps: {grad_accum_steps}")
 
-        # Generate a unique run name after calculating grad_accum_steps
-        run_name = f"{args.model}_B{config.model_training.micro_batch_size*dist_config['ddp_world_size']*grad_accum_steps/1024:.0f}k_{time.strftime('%Y%m%d_%H%M%S')}"
+        # Get relevant info
+        model_name = args.model
+        micro_batch_size = config.model_training.micro_batch_size # e.g., 64 or 32
+        timestamp = time.strftime('%Y%m%d_%H%M%S')
+
+        # Generate the unique run name
+        run_name = f"{model_name}_B{micro_batch_size}_{timestamp}"
+        print(f"Setting W&B Run Name: {run_name}")
         wandb.init(
             project="NanoTitan", # Your project name
             name=run_name,
