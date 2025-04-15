@@ -140,6 +140,9 @@ class LLaMA(nn.Module):
         ))
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
+        # Using weight tying, llama 3 does not use weight tying but llama 3.2 introduces it so it is being used
+        self.transformer.wte.weight = self.lm_head.weight
+
         # Precompute rotary positional embeddings
         rope_theta = getattr(config, 'rope_theta', 10000.0)
         use_scaled_rope = getattr(config, 'use_scaled_rope', False)
