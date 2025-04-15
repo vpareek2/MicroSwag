@@ -157,7 +157,7 @@ class LLaMATrainingConfig(BaseTrainingConfig):
 @dataclass
 class Gemma3Config:
     """Gemma 3 model architecture configuration, Params: 124,393,600"""
-    model_type: str = "gemma3"
+    model_type: str = "gemma"
     block_size: int = 1024
     vocab_size: int = 50304
     n_layer: int = 15
