@@ -24,7 +24,7 @@ NanoTitan is a project focused on optimizing small language models (124M base mo
 - Measure and compare HellaSwag performance across architectures
 
 ## Constraints
-- Parameter budget: <= 124M parameter base model (may move higher post-training)
+- Parameter budget: <= ~124M parameter base model (may move higher post-training)
 - Training data: FineWeb 10B dataset only (single epoch)
 - Training infrastructure: 8xA100 80GB GPUs (most likely)
 - Training time target: under 2 hours per model architecture
