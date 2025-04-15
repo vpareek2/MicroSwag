@@ -13,8 +13,8 @@ NanoTitan is a project focused on optimizing small language models (124M base mo
 ## Methodology
 - Pretrain multiple model architectures on the FineWeb 10B dataset for exactly one epoch, batch size 0.5M tokens, (19073 steps)
 - Maintain consistent training configuration across experiments (data loading, optimization, etc.), will change training methods if explitly mentioned in paper
-- Implement and evaluate 4-5 different model architectures including:
-  - GPT-2 (baseline, karpathy vid)
+- Implement and evaluate 6 different model architectures including:
+  - GPT-2 (baseline)
   - LLaMA 3
   - Gemma 3
   - Mistral
