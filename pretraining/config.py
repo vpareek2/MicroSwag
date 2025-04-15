@@ -31,7 +31,7 @@ class ModelConfig:
             return GPT2TrainingConfig()
         elif self.model_type == "llama":
             return LLaMATrainingConfig()
-        elif self.model_type == "phi4":
+        elif self.model_type == "mistral":
             return MistralTrainingConfig()
         elif self.model_type == "gemma3":
             return Gemma3TrainingConfig()
