@@ -1,3 +1,4 @@
+"""Train a Large Language Model"""
 import os
 import sys
 import time
@@ -89,10 +90,6 @@ def validate(model, val_loader, dist_config, device, device_type, model_type_str
 
     return val_loss_accum.item()
 
-
-# ===================================================
-# === Main train function starts here ===
-# ===================================================
 def train():
     """Main training function"""
     # Parse command line args
@@ -132,7 +129,7 @@ def train():
     device_type = dist_config["device_type"]
     master_process = dist_config["master_process"]
 
-    # === W&B Initialization ===
+    # W&B Initialization
     # Convert config dataclasses to dicts for logging
     config_dict = {
         "model_type": config.model.model_type,
@@ -423,11 +420,6 @@ def train():
              except FileNotFoundError:
                  pass
 
-    # === W&B Watch Model (Optional) ===
-    # if master_process:
-    #     wandb.watch(model, log="gradients", log_freq=1000)
-    # ==================================
-
     # Get LR scheduler
     get_lr = optimization.get_lr_scheduler(config, optimizer)
 
@@ -440,7 +432,6 @@ def train():
 
         # --- Dictionary to store metrics for this step ---
         log_data = {}
-        # -------------------------------------------------
 
         # Evaluate validation loss if needed
         if step % config.model_training.eval_interval == 0 or last_step:
@@ -637,14 +628,9 @@ def train():
     # Clean up distributed training
     distributed.cleanup_distributed(dist_config["ddp"])
 
-    # === W&B Finish ===
     if master_process:
         print("Training complete!")
         wandb.finish()
-    # ==================
 
-# ===================================================
-# === Main execution block ===
-# ===================================================
 if __name__ == "__main__":
     train()

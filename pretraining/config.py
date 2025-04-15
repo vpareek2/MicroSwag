@@ -1,9 +1,7 @@
+"""Model Configuration File"""
+
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union, Tuple, Any
-
-# -------------------------------------------------------------------
-# BASE CONFIGS
-# -------------------------------------------------------------------
 
 @dataclass
 class ModelConfig:
