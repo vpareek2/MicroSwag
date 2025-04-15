@@ -86,8 +86,8 @@ class GPT2TrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1  # weight decay for optimizer
     learning_rate: float = 6e-4  # base learning rate
     min_lr_ratio: float = 0.1  # minimum learning rate as ratio of max lr
-    warmup_steps: int = 5  # number of warmup steps
-    max_steps: int = 25  # maximum number of training steps
+    warmup_steps: int = 20  # number of warmup steps
+    max_steps: int = 50  # maximum number of training steps
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
 
@@ -120,8 +120,8 @@ class LLaMATrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1
     learning_rate: float = 6e-4
     min_lr_ratio: float = 0.1
-    warmup_steps: int = 715
-    max_steps: int = 19073
+    warmup_steps: int = 10
+    max_steps: int = 50
     betas: Tuple[float, float] = (0.9, 0.95)
     eps: float = 1e-8
 
@@ -181,8 +181,8 @@ class Gemma3TrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1
     learning_rate: float = 6e-4
     min_lr_ratio: float = 0.1
-    warmup_steps: int = 715
-    max_steps: int = 19073
+    warmup_steps: int = 10
+    max_steps: int = 50
     betas: Tuple[float, float] = (0.9, 0.95)
     eps: float = 1e-8
 
@@ -215,8 +215,8 @@ class MistralTrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1  # weight decay for optimizer
     learning_rate: float = 6e-4  # base learning rate
     min_lr_ratio: float = 0.1  # minimum learning rate as ratio of max lr
-    warmup_steps: int = 715  # number of warmup steps
-    max_steps: int = 19073  # maximum number of training steps
+    warmup_steps: int = 10  # number of warmup steps
+    max_steps: int = 50  # maximum number of training steps
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
 
