@@ -6,10 +6,6 @@ apt-get update
 # Install basic tools
 apt-get install git vim nano unzip zip rsync ninja-build tmux -y
 
-# Clone the GitHub repo (public read access)
-git clone https://github.com/vpareek2/NanoTitan.git
-cd NanoTitan
-
 # Optional: switch remote to allow push access
 git config --global user.email "veerpareek12@gmail.com"
 git config --global user.name "veer"
