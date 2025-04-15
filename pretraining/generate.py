@@ -39,7 +39,7 @@ def parse_args():
 def load_model(model_type, checkpoint_path, device):
     """Loads the model checkpoint and configuration."""
     print(f"Loading checkpoint from {checkpoint_path}...")
-    checkpoint = torch.load(checkpoint_path, map_location='cpu') # Load to CPU first
+    checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
     checkpoint_model_config = checkpoint['config']
 
     print(f"Instantiating model: {model_type}")
