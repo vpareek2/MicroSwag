@@ -40,8 +40,13 @@ def save_checkpoint(config, raw_model, optimizer, step, val_loss, train_loader, 
     # Create a checkpoint of the train loader
     train_loader_checkpoint = train_loader.get_loader_checkpoint()
 
+    # Get model type and create model-specific subdirectory
+    model_type = config.model.model_type
+    model_log_dir = os.path.join(log_dir, model_type) # e.g., log/llama/
+    os.makedirs(model_log_dir, exist_ok=True) # Create subdir if needed
+
     # Construct checkpoint path
-    checkpoint_path = os.path.join(log_dir, f"model_{step:05d}.pt")
+    checkpoint_path = os.path.join(model_log_dir, f"model_{step:05d}.pt")
 
     # Create checkpoint
     # Ensure raw_model.config exists or pass config.model_specific
@@ -189,16 +194,20 @@ def train():
         if master_process:
             print("Attempting to resume training from checkpoint...")
 
-        # Try to find checkpoint files in the log directory
+        # Try to find checkpoint files in the model-specific subdirectory
+        model_type_str = args.model
+        model_log_dir = os.path.join(log_dir, model_type_str)
         checkpoint_files = []
-        if os.path.isdir(log_dir): # Check if log_dir exists before listing
-             checkpoint_files = [f for f in os.listdir(log_dir) if f.startswith("model_") and f.endswith(".pt")]
+        if os.path.isdir(model_log_dir): # Check if model subdir exists before listing
+             checkpoint_files = [f for f in os.listdir(model_log_dir)
+                               if f.startswith("model_") and f.endswith(".pt")]
 
         if len(checkpoint_files) > 0:
             # --- RESUME LOGIC ---
             checkpoint_files = sorted(checkpoint_files)
             last_checkpoint = checkpoint_files[-1]
-            checkpoint_path = os.path.join(log_dir, last_checkpoint)
+            # Load from the model-specific subdirectory
+            checkpoint_path = os.path.join(model_log_dir, last_checkpoint)
 
             if master_process:
                 print(f"Loading checkpoint from {checkpoint_path}")
@@ -281,9 +290,9 @@ def train():
             if master_process:
                 print(f"Resuming training from step {current_step} with validation loss {checkpoint['val_loss']:.4f}")
 
-        else: # --- STARTING FRESH (because resume=True but no checkpoints found) ---
+        else: # --- STARTING FRESH (because resume=True but no checkpoints found for this model) ---
             if master_process:
-                print("No checkpoints found, starting fresh training run")
+                print(f"No checkpoints found for model '{model_type_str}', starting fresh training run")
 
             # ====> DEBUG PRINT BLOCK <====
             if master_process:
