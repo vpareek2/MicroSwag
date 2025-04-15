@@ -297,6 +297,16 @@ def train():
         if master_process:
             print("Starting fresh training run")
 
+        if master_process:
+            print(f"DEBUG: Creating model '{args.model}' using config type: {type(config.model_specific)}")
+            # Optionally print key params to confirm values
+            if hasattr(config.model_specific, 'n_layer'):
+                print(f"DEBUG: n_layer={config.model_specific.n_layer}")
+            if hasattr(config.model_specific, 'n_embd'):
+                print(f"DEBUG: n_embd={config.model_specific.n_embd}")
+            if hasattr(config.model_specific, 'vocab_size'):
+                print(f"DEBUG: vocab_size={config.model_specific.vocab_size}")
+
         # Create a new model
         if args.model == "gpt2":
             model = models.gpt2.create_gpt_from_config(config)
