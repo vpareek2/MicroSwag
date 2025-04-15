@@ -1,6 +1,6 @@
 # NanoTitan Project
 
-Current phase: Pre-Training
+Current phase: Training the models
 
 ## Project Overview
 NanoTitan is a project focused on optimizing small language models (124M base models) for performance on the HellaSwag benchmark. The project explores the architectural efficiency frontier for compact language models through a systematic comparison of modern transformer architectures, all while maintaining strict parameter and training constraints.
@@ -16,15 +16,12 @@ NanoTitan is a project focused on optimizing small language models (124M base mo
 - Implement and evaluate 4-5 different model architectures including:
   - GPT-2 (baseline, karpathy vid)
   - LLaMA 3
-  - Phi-4
   - Gemma 3
   - Mistral
   - DeepSeek-V3 (MoE)
   - RWKV
-  - TAKE A LOOK AT MULTI-TOKEN ATTENTION
+  *Multi-Token Attention*
 - Measure and compare HellaSwag performance across architectures
-
-**GO BACK AND LOOK AT HYPERPARAMS BEFORE TRAIN ENSURE PAPER COMPATIBILITY**
 
 ## Constraints
 - Parameter budget: <= 124M parameter base model (may move higher post-training)

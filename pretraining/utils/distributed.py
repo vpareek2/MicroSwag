@@ -62,27 +62,41 @@ def cleanup_distributed(ddp):
 def wrap_model_for_distributed(model, device, ddp, ddp_local_rank, use_compile=True):
     """Prepare a model for distributed training by applying compile and DDP wrappers."""
     # Get the original raw model instance before any wrapping
-    # This is important to get the correct class name before torch.compile might wrap it
     raw_model_instance = model
+    model_class_name = type(raw_model_instance).__name__ # Get class name early
 
+    # Determine master process for logging
+    master_process = int(os.environ.get('RANK', 0)) == 0
+
+    # Move model to device first
     model.to(device)
 
-    if use_compile:
-        # Apply compile *before* DDP if possible
-        # Note: DDP(torch.compile(model)) is generally recommended over torch.compile(DDP(model))
-        model = torch.compile(model)
+    # --- Conditional Compilation ---
+    # Decide whether to apply torch.compile based on global flag AND model type
+    apply_compile = use_compile # Start with the global flag from config
+    if model_class_name in ['Gemma3', 'Mistral']:
+        apply_compile = False # Explicitly disable for Gemma3 and Mistral
+        if use_compile and master_process: # Log only if compile was globally enabled but disabled here
+             print(f"Compile Info: Skipping torch.compile for model type {model_class_name} due to known issues/slowness.")
 
+    # Apply compile if decided
+    if apply_compile:
+        if master_process: print(f"Compile Info: Applying torch.compile for model type {model_class_name}...")
+        model = torch.compile(model)
+    else:
+        # Log skipping only if it wasn't already logged above
+        if not (model_class_name in ['Gemma3', 'Mistral'] and use_compile) and master_process:
+             print(f"Compile Info: Skipping torch.compile for model type {model_class_name} (use_compile=False).")
+
+
+    # --- Conditional DDP Wrapping ---
     if ddp:
         # Decide whether to use find_unused_parameters based on model type
-        model_class_name = type(raw_model_instance).__name__
-
-        # Enable the flag only for RWKV and DeepSeekMoE
         if model_class_name in ['RWKV', 'DeepSeekMoE']:
             find_unused = True
         else:
             find_unused = False
 
-        master_process = int(os.environ.get('RANK', 0)) == 0
         if master_process:
             print(f"DDP Info: Setting find_unused_parameters={find_unused} for model type {model_class_name}")
 
