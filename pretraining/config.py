@@ -47,7 +47,7 @@ class BaseTrainingConfig:
     """Base training configuration shared across models"""
     # Batch sizes
     total_batch_size: int = 524_288  # 2**19 ~0.5M tokens
-    micro_batch_size: int = 64  # micro-batch size
+    micro_batch_size: int = 32  # micro-batch size
     sequence_length: int = 1024  # sequence length for training
 
     # Common optimization settings
