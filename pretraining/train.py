@@ -484,7 +484,8 @@ def train():
                 device_type,
                 dist_config["ddp_rank"],
                 dist_config["ddp_world_size"],
-                distributed
+                distributed,
+                args.model
             )
 
             log_data['hellaswag_acc'] = results['accuracy'] # Add to log dict
