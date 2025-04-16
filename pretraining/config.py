@@ -216,7 +216,7 @@ class MistralTrainingConfig(BaseTrainingConfig):
 
 @dataclass
 class DeepSeekMoEConfig:
-    """DeepSeekMoE model architecture configuration, Total Params: 124,298,880, Active Params: 77,112,960"""
+    """DeepSeekMoE model architecture configuration, Params: [RECALCULATE]"""
     model_type: str = "deepseek" # Identifier
 
     # --- Core Transformer Args (Tuned for ~124.5M Params) ---
@@ -230,21 +230,17 @@ class DeepSeekMoEConfig:
     n_kv_head: int = 4          # GQA 2:1 Ratio
     q_lora_rank: int = 256      # Tuned
     kv_lora_rank: int = 64       # Tuned
-    # Head dims derived from n_embd/n_head (assuming simple split)
-    # v_head_dim = n_embd // n_head = 640 // 8 = 80
-    # qk_rope_head_dim = v_head_dim // 2 = 40
-    # qk_nope_head_dim = v_head_dim - qk_rope_head_dim = 40
     v_head_dim: int = 80
     qk_rope_head_dim: int = 40
     qk_nope_head_dim: int = 40
-    attention_bias: bool = False # Default from original config
-    attention_dropout: float = 0.0 # Default from original config
+    attention_bias: bool = False
+    attention_dropout: float = 0.0
 
-    # --- MoE Specific Args (Tuned) ---
-    n_routed_experts: int = 8   # Tuned
-    moe_intermediate_size: int = 256 # Tuned (Size within each expert MLP)
-    num_experts_per_tok: int = 2 # Standard MoE value
-    n_shared_experts: int = 2   # Tuned (Number of shared experts)
+    # --- MoE Specific Args (Aligned closer to paper, scaled down) ---
+    n_routed_experts: int = 8   # Tuned (Keep this, paper used 256)
+    moe_intermediate_size: int = 288 # Tuned (Keep this, paper used 2048)
+    num_experts_per_tok: int = 2
+    n_shared_experts: int = 1   # CHANGED from 2 (Matches paper)
 
     # --- Router Specific Args (Tuned) ---
     n_group: int = 2            # Tuned (Must divide n_routed_experts=8)
@@ -252,9 +248,9 @@ class DeepSeekMoEConfig:
     topk_group: int = 1         # Default
     norm_topk_prob: bool = False # Default
 
-    # --- Aux Loss Coefficients (Keep defaults or adjust if needed) ---
-    z_loss_coef: float = 0.001
-    routing_balance_coef: float = 0.01
+    # --- Aux Loss Coefficients (Aligned closer to paper) ---
+    z_loss_coef: float = 0.001 # Keep this for stability
+    routing_balance_coef: float = 0.0001 # CHANGED from 0.01 (Matches paper's alpha)
 
     # --- Normalization & RoPE Args ---
     norm_eps: float = 1e-6      # DeepSeek default
@@ -262,8 +258,8 @@ class DeepSeekMoEConfig:
 
     # --- Other Architectural Args ---
     hidden_act: str = "silu"    # Standard activation
-    initializer_range: float = 0.02 # Standard init range
-    tie_word_embeddings: bool = True # Set to True for parameter efficiency
+    initializer_range: float = 0.006 # CHANGED from 0.02 (Matches paper)
+    tie_word_embeddings: bool = True
     use_cache: bool = False
 
     # --- Derived Attributes ---
@@ -315,7 +311,7 @@ class DeepSeekMoETrainingConfig(BaseTrainingConfig):
     eps: float = 1e-8  # epsilon parameter for AdamW
 
     # MoE-specific training parameters
-    routing_balance_coef: float = 0.01  # coefficient for expert balancing loss
+    routing_balance_coef: float = 0.0001  # coefficient for expert balancing loss
     z_loss_coef: float = 0.001  # coefficient for z-loss to stabilize gating
 
 # In config.py
