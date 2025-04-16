@@ -1,9 +1,11 @@
 # NanoTitan Project
 
-Current phase: Training the models
+Current phase: Training the models on pause, please email me if you have some GPUs to share :)
+Working on porting DeepSeek/RWKV to jax for TPU RC. May taint results a bit but I dont have any funding/compute and am a student.
 
 **Hierarchy**
 1. GPT-2
+1. DeepSeekV3 (Trained on only 5500 steps, beat GPT2, ran into training bugs and do not have the funding to train further atm.)
 2. LLaMA
 
 ## Project Overview
