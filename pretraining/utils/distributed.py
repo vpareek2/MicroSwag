@@ -82,7 +82,7 @@ def wrap_model_for_distributed(model, device, ddp, ddp_local_rank, use_compile=T
     # Apply compile if decided
     if apply_compile:
         if master_process: print(f"Compile Info: Applying torch.compile for model type {model_class_name}...")
-        model = torch.compile(model, mode="max-autotune")
+        model = torch.compile(model)
     else:
         # Log skipping only if it wasn't already logged above
         if not (model_class_name in ['Gemma3', 'Mistral'] and use_compile) and master_process:
