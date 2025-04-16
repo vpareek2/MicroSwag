@@ -233,7 +233,7 @@ def train():
             if master_process:
                 print(f"Loading checkpoint from {checkpoint_path}")
 
-            checkpoint = torch.load(checkpoint_path, map_location=device)
+            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False) # Allow loading pickled config object
 
             # Load model config FROM CHECKPOINT
             checkpoint_model_config = checkpoint['config']
