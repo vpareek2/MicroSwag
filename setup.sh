@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Update system packages
-sudo apt-get update
+# sudo apt-get update
 
 # Install basic tools
-sudo apt-get install git vim nano unzip zip rsync ninja-build tmux -y
+# sudo apt-get install git vim nano unzip zip rsync ninja-build tmux -y
 
 # Optional: switch remote to allow push access
 git config --global user.email "veerpareek12@gmail.com"

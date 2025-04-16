@@ -47,14 +47,14 @@ class BaseTrainingConfig:
     """Base training configuration shared across models"""
     # Batch sizes
     total_batch_size: int = 524_288  # 2**19 ~0.5M tokens
-    micro_batch_size: int = 64  # micro-batch size
+    micro_batch_size: int = 16 # 64  # micro-batch size
     sequence_length: int = 1024  # sequence length for training
 
     # Common optimization settings
     grad_clip: float = 1.0  # gradient clipping value
 
     # Schedule settings
-    eval_interval: int = 500  # interval between evaluations
+    eval_interval: int = 40#500  # interval between evaluations
     checkpoint_interval: int = 2500  # interval between checkpoints
 
 # -------------------------------------------------------------------
@@ -305,8 +305,8 @@ class DeepSeekMoETrainingConfig(BaseTrainingConfig):
     weight_decay: float = 0.1  # weight decay for optimizer
     learning_rate: float = 6e-4  # base learning rate
     min_lr_ratio: float = 0.1  # minimum learning rate as ratio of max lr
-    warmup_steps: int = 715  # number of warmup steps
-    max_steps: int = 19073  # maximum number of training steps
+    warmup_steps: int = 10  # number of warmup steps
+    max_steps: int = 50  # maximum number of training steps
     betas: Tuple[float, float] = (0.9, 0.95)  # beta parameters for AdamW
     eps: float = 1e-8  # epsilon parameter for AdamW
 
@@ -314,7 +314,6 @@ class DeepSeekMoETrainingConfig(BaseTrainingConfig):
     routing_balance_coef: float = 0.0001  # coefficient for expert balancing loss
     z_loss_coef: float = 0.001  # coefficient for z-loss to stabilize gating
 
-# In config.py
 
 @dataclass
 class RWKVConfig:
